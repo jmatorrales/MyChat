@@ -41,6 +41,9 @@ CREATE TABLE IF NOT EXISTS messages (
 INSERT INTO users (username, email, password_hash, role) VALUES ('admin', 'admin@noreplay.mychat.com', '$2b$10$0kKlnt97SwWnA5Fb7EqWDuWZ.Xg2E1lpphEnrez0wcWCWWDw9WTm2','admin');
 
 SELECT * FROM users;
+SELECT * FROM rooms;
+SELECT * FROM rooms_users;
+SELECT * FROM messages;
 
 describe rooms;
 
