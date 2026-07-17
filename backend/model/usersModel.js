@@ -31,9 +31,19 @@ module.exports = class Users {
   }
   //* Para comprobar si el nombre existe o esta en uso
   static async getByUsername(username) {
-  const [rows] = await db.execute("SELECT * FROM users WHERE username = ?", [username]);
-  return rows[0];
-}
+    const [rows] = await db.execute("SELECT * FROM users WHERE username = ?", [
+      username,
+    ]);
+    return rows[0];
+  }
+  // Busca usuarios cuyo username contenga el texto (para el buscador de "nuevo chat")
+  static async searchByUsername(query) {
+    const [rows] = await db.execute(
+      "SELECT id, username, email FROM users WHERE username LIKE ? LIMIT 10",
+      [`%${query}%`],
+    );
+    return rows;
+  }
 
   static async createUser(data) {
     const { username, email, password } = data;

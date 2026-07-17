@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS rooms (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
     type ENUM('individual', 'group') NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS room_users (
@@ -25,7 +27,21 @@ CREATE TABLE IF NOT EXISTS room_users (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    room_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- USUARIO ESTANDARD PARA PRUEBAS - user: admin password: admin123 (esta hasheada)
 INSERT INTO users (username, email, password_hash, role) VALUES ('admin', 'admin@noreplay.mychat.com', '$2b$10$0kKlnt97SwWnA5Fb7EqWDuWZ.Xg2E1lpphEnrez0wcWCWWDw9WTm2','admin');
 
 SELECT * FROM users;
+
+describe rooms;
+
+-- drop database mychat_db;

@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
+import { useRoomsStore } from "./roomsStore";
 
 export const useAuthStore = defineStore("auth", () => {
   //* Recuperamos el usuario guardado del localStorage al cargar la app si ya lo estaba previamente
@@ -19,7 +20,6 @@ export const useAuthStore = defineStore("auth", () => {
       // si el backend responde 401/400/500, lanzamos el mensaje de error para pillarlo en el componente
       throw new Error(data.error || "Error al iniciar sesión");
     }
-    console.log(data);
     usuario.value = data;
     localStorage.setItem("usuario", JSON.stringify(data)); // persistencia
   }
@@ -52,6 +52,10 @@ export const useAuthStore = defineStore("auth", () => {
   function logout() {
     usuario.value = null;
     localStorage.removeItem("usuario");
+    // limpiamos también el estado de salas, para que no queden referencias colgando
+    const roomsStore = useRoomsStore();
+    roomsStore.salas = [];
+    roomsStore.salaActiva = null;
   }
 
   return { usuario, login, register, checkUsername, logout };

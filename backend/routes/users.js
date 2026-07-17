@@ -1,9 +1,10 @@
+// Importaciones
 const express = require("express");
 const router = express.Router();
 const controller = require("../controller/usersController");
 const { body, validationResult } = require("express-validator");
 
-// middleware reutilizable: revisa si hubo errores de validación
+// Middleware reutilizable: si express-validator detectó errores, corta aquí con un 400
 const validar = (req, res, next) => {
   const errores = validationResult(req);
   if (!errores.isEmpty()) {
@@ -12,12 +13,14 @@ const validar = (req, res, next) => {
   next();
 };
 
-//router.get('/', controller.getAll)
+//router.get('/', controller.getAll) // listar todos - sin usar por ahora (sin protección de admin)
 
-router.get("/email/:email", controller.getByEmail); // para el LOGIN (buscar por email)
-router.get("/username/:username", controller.getByUsername);
-router.get("/:id", controller.getById); // para uso interno (perfil, salas, mensajes...)
-//* Reglas de validación del login
+router.get("/email/:email", controller.getByEmail);     // usado internamente para el LOGIN (buscar por email exacto)
+router.get("/username/:username", controller.getByUsername); // comprobar si un username ya está en uso (registro)
+router.get("/search/:query", controller.search);        // buscador de usuarios por coincidencia parcial (nuevo chat)
+router.get("/:id", controller.getById);                  // uso interno: perfil, salas, mensajes...
+
+// login: valida formato de email y que password no esté vacío
 router.post(
   "/login",
   [
@@ -27,7 +30,8 @@ router.post(
   validar,
   controller.login
 );
-// reglas de validación para crear usuario
+
+// registro: valida username, email y longitud mínima de password
 router.post(
   "/",
   [
@@ -38,9 +42,10 @@ router.post(
       .withMessage("La contraseña debe tener al menos 6 caracteres"),
   ],
   validar, // si hay errores, corta aquí y devuelve 400
-  controller.create, // si todo bien, sigue al controller
+  controller.create,
 );
-//router.put('/:id', controller.update)
-//router.delete('/:id', controller.remove)
+
+//router.put('/:id', controller.update)   // pendiente
+//router.delete('/:id', controller.remove) // pendiente
 
 module.exports = router;

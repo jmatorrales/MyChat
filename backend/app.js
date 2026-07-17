@@ -1,18 +1,21 @@
-//** Montamos la app
-const express = require('express')
+//** Montamos la app de Express (rutas REST: users, rooms, messages)
+const express = require('express');
 const app = express();
 
-//* npm install cors -> para que el server reciba peticiones de otro origen
+//* Permite que el frontend (otro origen/puerto) pueda hacer peticiones a esta API
 const cors = require("cors");
 app.use(cors());
 
-//* Rutas de las diferentes peticiones
+//* Routers de cada recurso
 const usersRouter = require('./routes/users');
+const roomsRouter = require('./routes/rooms');
+const messagesRouter = require('./routes/messages');
 
 //* Middleware: permite leer JSON del body (req.body) en las peticiones
 app.use(express.json());
 
-//** Codigo para probar autorización - de momento no usar
+//** Middleware de autorización - PENDIENTE DE USAR (se activará con JWT)
+// de momento no está enganchado a ninguna ruta con app.use/router.use
 const auth = (req, res, next) => {
   if (!req.headers.authorization) {
     return res.status(401).send("No autorizado");
@@ -20,13 +23,17 @@ const auth = (req, res, next) => {
   next();
 };
 
+// Logger: registra cada petición (método, ruta, IP, status) en logs/app.log y logs/error.log
 const { loggerMiddleware } = require('./middlewares/logger');
-app.use(loggerMiddleware);// se aplica a TODAS las rutas, porque no tiene URL específica
+app.use(loggerMiddleware); // se aplica a TODAS las rutas, porque no tiene URL específica
 
-//* Delegación de rutas (URL, variable de la ruta) // (URL, Middleware, router final )
-// en app.js
-app.get('/', (req, res) => res.send('API funcionando 🚀'));
+//* Ruta solo para comprobar que el server responde - No se usa, se puede quitar pero en la /api dara 404
+app.get('/', (req, res) => res.send('API funcionando'));
+
+//* Delegación de rutas: cada router gestiona su propio recurso
 app.use('/users', usersRouter);
+app.use('/rooms', roomsRouter);
+app.use('/messages', messagesRouter);
 
-// Exportamos la app para poder arrancarla desde otro archivo (ej: server.js)
+// Exportamos la app para que server.js la use como base del servidor HTTP
 module.exports = app;
