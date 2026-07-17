@@ -1,6 +1,9 @@
 <template>
     <div class="w-full h-full flex flex-col bg-gray-600 p-3 gap-2">
         <p class="text-white font-semibold">{{ sala.displayName }}</p>
+        <!-- solo mostramos gestión de sala para GRUPOS -->
+        <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="text-white cursor-pointer" :size="20" />
+        <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="text-white cursor-pointer" :size="20" />
 
         <div ref="contenedorMensajes" class="w-full flex-1 bg-amber-100 overflow-y-auto p-4 flex flex-col gap-2">
             <div v-for="msg in mensajes" :key="msg.id"
@@ -18,14 +21,18 @@
                 <Send class="text-white" />
             </button>
         </div>
+        <RoomInfo v-if="showRoomInfo" :sala="sala" @close="showRoomInfo = false" />
     </div>
 </template>
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
-import { Send } from '@lucide/vue'
+import { Send, Info, Trash2 } from '@lucide/vue'
 import { useSocket } from '../composables/useSocket'
 import { useAuthStore } from '../stores/authStore'
+import RoomInfo from './RoomInfo.vue'
+import { API_URL } from '../config'
+import { useRoomsStore } from '../stores/roomsStore'
 
 const props = defineProps({
     sala: { type: Object, required: true }
@@ -37,11 +44,20 @@ const { mensajes, unirseSala, enviarMensaje: enviarPorSocket, escucharMensajes }
 const nuevoMensaje = ref('')
 const contenedorMensajes = ref(null)
 
+const showRoomInfo = ref(false)
+const roomsStore = useRoomsStore()
+
 // carga el historial de la sala desde la BBDD (vía REST)
 async function cargarHistorial(roomId) {
-    const res = await fetch(`http://localhost:3156/messages/room/${roomId}`)
+    const res = await fetch(`${API_URL}/messages/room/${roomId}`)
     mensajes.value = await res.json()
     scrollAbajo()
+}
+
+// Eliminar chats tanto individuales como grupales
+async function eliminarChat() {
+  if (!confirm('¿Eliminar este chat? Solo se borrará de tu lista.')) return
+  await roomsStore.abandonarSala(props.sala.id)
 }
 
 // cada vez que cambia la sala activa, nos unimos a la nueva y cargamos su historial

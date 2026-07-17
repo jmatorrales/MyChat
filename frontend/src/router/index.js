@@ -36,6 +36,11 @@ const routes = [
         name: "salas",
         component: () => import("../views/complete/users/Salas.vue"),
       },
+      {
+        path: "join/:roomId",
+        name: "join-room",
+        component: () => import("../views/complete/users/JoinRoom.vue"),
+      },
     ],
   },
 
@@ -63,7 +68,8 @@ router.beforeEach((to) => {
   const authStore = useAuthStore();
 
   if (to.meta.requiresAuth && !authStore.usuario) {
-    return "/login";
+    // guardamos la ruta a la que querías ir, para volver ahí tras el login
+    return { path: "/login", query: { redirect: to.fullPath } };
   }
 
   if (to.meta.role && authStore.usuario?.role !== to.meta.role) {

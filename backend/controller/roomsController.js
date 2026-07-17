@@ -1,5 +1,6 @@
 const Rooms = require("../model/roomsModel");
 const { logger } = require("../middlewares/logger");
+const { getIO } = require("../socket");
 
 // Devuelve todas las salas/chats de un usuario, con el nombre ya resuelto
 exports.getMisSalas = async (req, res) => {
@@ -30,23 +31,37 @@ exports.createGroup = async (req, res) => {
 };
 
 // Crea una sala INDIVIDUAL: se necesitan los DOS usuarios de una vez
-// (a diferencia del grupo, aquí no tiene sentido crear la sala sin el otro participante)
+// Antes de crear, comprueba si ya existe un chat entre ambos (evita duplicados)
 exports.createIndividual = async (req, res) => {
   try {
     const { userA, userB } = req.body;
-    const result = await Rooms.createIndividual({ created_by: userA });
 
-    // metemos a los dos participantes de golpe
+    // si ya existe un chat individual entre estos dos usuarios, devolvemos ese id sin crear otro
+    const existente = await Rooms.findIndividual(userA, userB);
+    if (existente) {
+      return res.status(200).json({ id: existente.id });
+    }
+
+    // no existía -> lo creamos y metemos a los dos usuarios
+    const result = await Rooms.createIndividual({ created_by: userA });
     await Rooms.addUser(result.insertId, userA);
     await Rooms.addUser(result.insertId, userB);
 
+    // avisamos al otro usuario en tiempo real, para que le aparezca el chat sin refrescar
+    const io = getIO();
+    if (io) io.to(`user_${userB}`).emit("salas:actualizado");
+
     res.status(201).json({ id: result.insertId });
   } catch (err) {
-    logger.error({ evento: "error_crear_sala_individual", mensaje: err.message });
+    logger.error({
+      evento: "error_crear_sala_individual",
+      mensaje: err.message,
+    });
     res.status(500).json({ error: "Error al crear el chat individual" });
   }
 };
 
+// Busca salas de GRUPO por coincidencia parcial de nombre (para unirse en vez de duplicar)
 exports.searchGroups = async (req, res) => {
   try {
     const salas = await Rooms.searchGroups(req.params.query);
@@ -57,14 +72,70 @@ exports.searchGroups = async (req, res) => {
   }
 };
 
-// Añade un usuario existente a una sala de grupo (invitación)
+// Añade un usuario existente a una sala de grupo (invitación / unirse por enlace)
 exports.addUser = async (req, res) => {
   try {
     const { roomId, userId } = req.body;
     await Rooms.addUser(roomId, userId);
+
+    // avisamos a todos los de la sala (incluido el nuevo) para que se refresque en tiempo real
+    const io = getIO();
+    if (io) io.to(`user_${userId}`).emit("salas:actualizado");
+
     res.status(201).send({ ok: true });
   } catch (err) {
     logger.error({ evento: "error_anadir_usuario_sala", mensaje: err.message });
     res.status(500).json({ error: "Error al añadir usuario a la sala" });
+  }
+};
+
+// Info de una sala + sus miembros (para el panel de gestión)
+exports.getRoomInfo = async (req, res) => {
+  try {
+    const room = await Rooms.getById(req.params.id);
+    if (!room) return res.status(404).json({ error: "Sala no encontrada" });
+
+    const usuarios = await Rooms.getUsersInRoom(req.params.id);
+    res.json({ ...room, usuarios });
+  } catch (err) {
+    logger.error({ evento: "error_info_sala", mensaje: err.message });
+    res.status(500).json({ error: "Error al obtener la sala" });
+  }
+};
+
+// Quita a un usuario de la sala: expulsión (solo el creador puede hacerlo con otros)
+// o abandono (cualquiera puede quitarse a sí mismo)
+exports.removeUser = async (req, res) => {
+  try {
+    const { roomId, userId, requestedBy } = req.body;
+    const room = await Rooms.getById(roomId);
+    if (!room) return res.status(404).json({ error: "Sala no encontrada" });
+
+    const esUnoMismo = requestedBy === userId;
+    const esCreador = room.created_by === requestedBy;
+
+    if (!esUnoMismo && !esCreador) {
+      return res
+        .status(403)
+        .json({ error: "No tienes permiso para expulsar a este usuario" });
+    }
+
+    await Rooms.removeUser(roomId, userId);
+
+    const miembrosRestantes = await Rooms.getUsersInRoom(roomId);
+
+    if (miembrosRestantes.length === 0) {
+      // no queda nadie -> borramos la sala del todo
+      await Rooms.deleteRoom(roomId);
+    } else if (room.created_by === userId) {
+      // el que se fue era el admin -> pasa al miembro más antiguo que quede
+      const nuevoAdmin = await Rooms.getOldestMember(roomId);
+      if (nuevoAdmin) await Rooms.updateCreatedBy(roomId, nuevoAdmin.user_id);
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ evento: "error_quitar_usuario_sala", mensaje: err.message });
+    res.status(500).json({ error: "Error al quitar al usuario de la sala" });
   }
 };

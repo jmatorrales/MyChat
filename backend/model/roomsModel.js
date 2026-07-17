@@ -8,21 +8,29 @@ module.exports = class Rooms {
   static async getByUserId(userId) {
     const [rows] = await db.execute(
       `SELECT 
-         r.id, 
-         r.type, 
-         r.created_by,
-         CASE 
-           WHEN r.type = 'group' THEN r.name
-           ELSE otro.username
-         END AS displayName
-       FROM rooms r
-       JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ?
-       LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ?
-       LEFT JOIN users otro ON otro.id = ru_otro.user_id AND r.type = 'individual'
-       WHERE ru.room_id IN (
-         SELECT room_id FROM room_users WHERE user_id = ?
-       )`,
-      [userId, userId, userId],
+       r.id, 
+       r.type, 
+       r.created_by,
+       CASE 
+         WHEN r.type = 'group' THEN r.name
+         ELSE otro.username
+       END AS displayName
+     FROM rooms r
+     JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ?
+     -- el join con "el otro usuario" ahora SOLO se hace para chats individuales
+     LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
+     LEFT JOIN users otro ON otro.id = ru_otro.user_id
+     WHERE ru.room_id IN (
+       SELECT room_id FROM room_users WHERE user_id = ?
+     )
+     -- un chat individual solo aparece si YO lo creé, o si ya hay al menos un mensaje
+     -- (así B no ve el chat hasta que A le escriba de verdad)
+     AND (
+       r.type = 'group'
+       OR r.created_by = ?
+       OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)
+     )`,
+      [userId, userId, userId, userId],
     );
     return rows;
   }
@@ -86,5 +94,48 @@ module.exports = class Rooms {
       [`%${query}%`],
     );
     return rows;
+  }
+
+  // Info básica de una sala (nombre, tipo, creador)
+  static async getById(roomId) {
+    const [rows] = await db.execute("SELECT * FROM rooms WHERE id = ?", [
+      roomId,
+    ]);
+    return rows[0];
+  }
+
+  // miembro más antiguo de la sala (para reasignar el admin cuando el creador se va)
+  static async getOldestMember(roomId) {
+    const [rows] = await db.execute(
+      "SELECT user_id FROM room_users WHERE room_id = ? ORDER BY joined_at ASC LIMIT 1",
+      [roomId],
+    );
+    return rows[0];
+  }
+
+  // cambia quién es el creador/admin de la sala
+  static async updateCreatedBy(roomId, newCreatorId) {
+    const [result] = await db.execute(
+      "UPDATE rooms SET created_by = ? WHERE id = ?",
+      [newCreatorId, roomId],
+    );
+    return result;
+  }
+
+  // Elimina a un usuario de una sala (sirve tanto para "expulsar" como para "abandonar")
+  static async removeUser(roomId, userId) {
+    const [result] = await db.execute(
+      "DELETE FROM room_users WHERE room_id = ? AND user_id = ?",
+      [roomId, userId],
+    );
+    return result;
+  }
+
+  // Elimina la sala si ya no hay usuarios (el ultimo usuario de la sala se va que seria el admin)
+  static async deleteRoom(roomId) {
+    const [result] = await db.execute("DELETE FROM rooms WHERE id = ?", [
+      roomId,
+    ]);
+    return result;
   }
 };

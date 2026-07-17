@@ -10,6 +10,7 @@ app.use(cors());
 const usersRouter = require('./routes/users');
 const roomsRouter = require('./routes/rooms');
 const messagesRouter = require('./routes/messages');
+const qrRouter = require('./routes/qr');
 
 //* Middleware: permite leer JSON del body (req.body) en las peticiones
 app.use(express.json());
@@ -34,6 +35,7 @@ app.get('/', (req, res) => res.send('API funcionando'));
 app.use('/users', usersRouter);
 app.use('/rooms', roomsRouter);
 app.use('/messages', messagesRouter);
+app.use('/qr', qrRouter);
 
 // Exportamos la app para que server.js la use como base del servidor HTTP
 module.exports = app;

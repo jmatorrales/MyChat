@@ -13,6 +13,7 @@ const validar = (req, res, next) => {
 // listar las salas de un usuario (para pintar la columna izquierda)
 router.get("/user/:userId", controller.getMisSalas);
 router.get("/search/:query", controller.searchGroups);
+router.get("/:id/info", controller.getRoomInfo);
 
 // crear sala de GRUPO -> nombre obligatorio
 router.post(
@@ -45,6 +46,18 @@ router.post(
   ],
   validar,
   controller.addUser
+);
+
+// Eliminamos usuarios de los grupos
+router.post(
+  "/remove-user",
+  [
+    body("roomId").isInt().withMessage("roomId inválido"),
+    body("userId").isInt().withMessage("userId inválido"),
+    body("requestedBy").isInt().withMessage("requestedBy inválido"),
+  ],
+  validar,
+  controller.removeUser
 );
 
 module.exports = router;

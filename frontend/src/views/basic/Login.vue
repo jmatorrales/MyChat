@@ -40,7 +40,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue' // Funcion data del components
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
 
 const email = ref('')
@@ -49,6 +49,7 @@ const remember = ref(false) // checkbox para recordar al usuario
 const error = ref('') // para mostrar el error en el template
 
 const router = useRouter()
+const route = useRoute() // TODO: Saber que diferencia hay
 const authStore = useAuthStore()
 
 onMounted(() => {
@@ -72,8 +73,10 @@ async function handleSubmit() {
             localStorage.removeItem('credenciales')
         }
 
-        // redirige según el rol que devolvió el backend
-        if (authStore.usuario.role === 'admin') {
+        // si veníamos de un enlace de invitación (u otra ruta protegida), volvemos ahí
+        if (route.query.redirect) {
+            router.push(route.query.redirect)
+        } else if (authStore.usuario.role === 'admin') { // redirige según el rol que devolvió el backend
             router.push('/admin')
         } else {
             router.push('/app')

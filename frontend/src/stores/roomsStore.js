@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useAuthStore } from "./authStore";
+import { API_URL } from '../config'
 
 export const useRoomsStore = defineStore("rooms", () => {
   const salas = ref([]); // lista de salas del usuario logueado
@@ -10,7 +11,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   async function fetchSalas() {
     const authStore = useAuthStore();
     const res = await fetch(
-      `http://localhost:3156/rooms/user/${authStore.usuario.id}`,
+      `${API_URL}/rooms/user/${authStore.usuario.id}`,
     );
     salas.value = await res.json();
   }
@@ -18,7 +19,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // busca usuarios por nombre (para iniciar un chat nuevo)
   async function buscarUsuarios(query) {
     if (!query.trim()) return [];
-    const res = await fetch(`http://localhost:3156/users/search/${query}`);
+    const res = await fetch(`${API_URL}/users/search/${query}`);
     return await res.json();
   }
 
@@ -26,7 +27,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // (el backend ya comprueba si el chat existe, así que aquí no duplicamos)
   async function crearIndividual(otroUserId) {
     const authStore = useAuthStore();
-    const res = await fetch("http://localhost:3156/rooms/individual", {
+    const res = await fetch(`${API_URL}/rooms/individual`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userA: authStore.usuario.id, userB: otroUserId }),
@@ -39,7 +40,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // crea una sala de grupo y refresca la lista
   async function crearGrupo(nombre) {
     const authStore = useAuthStore();
-    const res = await fetch("http://localhost:3156/rooms/group", {
+    const res = await fetch(`${API_URL}/rooms/group"`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: nombre, created_by: authStore.usuario.id }),
@@ -52,14 +53,14 @@ export const useRoomsStore = defineStore("rooms", () => {
   // busca salas de GRUPO existentes por nombre (para unirse en vez de crear una duplicada)
   async function buscarSalas(query) {
     if (!query.trim()) return [];
-    const res = await fetch(`http://localhost:3156/rooms/search/${query}`);
+    const res = await fetch(`${API_URL}/rooms/search/${query}`);
     return await res.json();
   }
 
   // une al usuario logueado a una sala de grupo ya existente y refresca la lista
   async function unirseGrupo(roomId) {
     const authStore = useAuthStore();
-    await fetch("http://localhost:3156/rooms/add-user", {
+    await fetch(`${API_URL}/rooms/add-user`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomId, userId: authStore.usuario.id }),
@@ -73,6 +74,43 @@ export const useRoomsStore = defineStore("rooms", () => {
     salaActiva.value = sala;
   }
 
+  // trae la info de una sala (nombre, creador) + sus miembros
+  async function fetchRoomInfo(roomId) {
+    const res = await fetch(`${API_URL}/rooms/${roomId}/info`);
+    return await res.json();
+  }
+
+  // expulsa a un usuario (o te quitas tú mismo si userId === tu propio id)
+  async function removeUser(roomId, userId) {
+    const authStore = useAuthStore();
+    await fetch(`${API_URL}/rooms/remove-user`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        userId,
+        requestedBy: authStore.usuario.id,
+      }),
+    });
+  }
+
+  // abandonar sala: te quitas a ti mismo y refrescas la lista + deseleccionas la sala
+  async function abandonarSala(roomId) {
+    const authStore = useAuthStore();
+    await removeUser(roomId, authStore.usuario.id);
+    await fetchSalas();
+    if (salaActiva.value?.id === roomId) salaActiva.value = null;
+  }
+
+  // pide al backend el QR de una URL cualquiera (usado para el enlace de invitación)
+  async function getQR(url) {
+    const res = await fetch(
+      `${API_URL}/qr?url=${encodeURIComponent(url)}`,
+    );
+    const data = await res.json();
+    return data.qr;
+  }
+
   return {
     salas,
     salaActiva,
@@ -83,5 +121,9 @@ export const useRoomsStore = defineStore("rooms", () => {
     buscarSalas,
     unirseGrupo,
     seleccionarSala,
+    fetchRoomInfo,
+    removeUser,
+    abandonarSala,
+    getQR,
   };
 });

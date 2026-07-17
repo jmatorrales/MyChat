@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useRoomsStore } from "./roomsStore";
+import { API_URL } from '../config'
 
 export const useAuthStore = defineStore("auth", () => {
   //* Recuperamos el usuario guardado del localStorage al cargar la app si ya lo estaba previamente
@@ -8,7 +9,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   //* Funcion para conectarnos con el backend y logearnos
   async function login(email, password) {
-    const res = await fetch("http://localhost:3156/users/login", {
+    const res = await fetch(`${API_URL}/users/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -26,7 +27,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   //* Funcion para registrarse
   async function register(username, email, password) {
-    const res = await fetch("http://localhost:3156/users", {
+    const res = await fetch(`${API_URL}/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password }),
@@ -44,7 +45,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function checkUsername(username) {
-    const res = await fetch(`http://localhost:3156/users/username/${username}`);
+    const res = await fetch(`${API_URL}/users/username/${username}`);
     const data = await res.json();
     return data.disponible;
   }
