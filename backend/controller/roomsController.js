@@ -115,20 +115,16 @@ exports.removeUser = async (req, res) => {
     const esCreador = room.created_by === requestedBy;
 
     if (!esUnoMismo && !esCreador) {
-      return res
-        .status(403)
-        .json({ error: "No tienes permiso para expulsar a este usuario" });
+      return res.status(403).json({ error: "No tienes permiso para expulsar a este usuario" });
     }
 
-    await Rooms.removeUser(roomId, userId);
+    await Rooms.removeUser(roomId, userId); // ahora es soft delete (left_at)
 
-    const miembrosRestantes = await Rooms.getUsersInRoom(roomId);
+    const activos = await Rooms.getUsersInRoom(roomId); // solo activos
 
-    if (miembrosRestantes.length === 0) {
-      // no queda nadie -> borramos la sala del todo
-      await Rooms.deleteRoom(roomId);
+    if (activos.length === 0) {
+      await Rooms.deleteRoom(roomId); // nadie activo -> borramos la sala del todo
     } else if (room.created_by === userId) {
-      // el que se fue era el admin -> pasa al miembro más antiguo que quede
       const nuevoAdmin = await Rooms.getOldestMember(roomId);
       if (nuevoAdmin) await Rooms.updateCreatedBy(roomId, nuevoAdmin.user_id);
     }

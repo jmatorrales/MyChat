@@ -4,7 +4,7 @@ const { logger } = require("../middlewares/logger");
 // Devuelve el historial de mensajes de una sala, ordenado del más antiguo al más nuevo
 exports.getByRoom = async (req, res) => {
   try {
-    const mensajes = await Messages.getByRoom(req.params.roomId);
+    const mensajes = await Messages.getByRoom(req.params.roomId, req.params.userId);
     res.send(mensajes);
   } catch (err) {
     logger.error({ evento: "error_listar_mensajes", mensaje: err.message });

@@ -2,35 +2,61 @@
 const db = require("../config/database");
 
 module.exports = class Rooms {
-  // Devuelve las salas donde participa un usuario, resolviendo el nombre a mostrar según el tipo:
+  // Devuelve las salas ACTIVAS de un usuario (donde no las ha abandonado él mismo),
+  // resolviendo el nombre a mostrar según el tipo:
   // - si es grupo -> el nombre real de la sala
   // - si es individual -> el username del OTRO participante (no el mío)
+  // Un chat individual solo se muestra si YO lo creé, o si ya hay al menos un mensaje
+  // (así el destinatario no ve el chat hasta que le escriban de verdad)
   static async getByUserId(userId) {
     const [rows] = await db.execute(
       `SELECT 
-       r.id, 
-       r.type, 
-       r.created_by,
-       CASE 
-         WHEN r.type = 'group' THEN r.name
-         ELSE otro.username
-       END AS displayName
-     FROM rooms r
-     JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ?
-     -- el join con "el otro usuario" ahora SOLO se hace para chats individuales
-     LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
-     LEFT JOIN users otro ON otro.id = ru_otro.user_id
-     WHERE ru.room_id IN (
-       SELECT room_id FROM room_users WHERE user_id = ?
-     )
-     -- un chat individual solo aparece si YO lo creé, o si ya hay al menos un mensaje
-     -- (así B no ve el chat hasta que A le escriba de verdad)
-     AND (
-       r.type = 'group'
-       OR r.created_by = ?
-       OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)
-     )`,
-      [userId, userId, userId, userId],
+         r.id, 
+         r.type, 
+         r.created_by,
+         CASE 
+           WHEN r.type = 'group' THEN r.name
+           ELSE otro.username
+         END AS displayName
+       FROM rooms r
+       JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
+       LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
+       LEFT JOIN users otro ON otro.id = ru_otro.user_id
+       WHERE r.type = 'group'
+          OR r.created_by = ?
+          OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
+      [userId, userId, userId],
+    );
+    return rows;
+  }
+
+  // Lista los usuarios ACTIVOS de una sala (para el panel de gestión y el cálculo de nuevo admin)
+  // Un usuario deja de estar "activo" cuando abandona el chat (left_at deja de ser NULL)
+  static async getUsersInRoom(roomId) {
+    const [rows] = await db.execute(
+      `SELECT u.id, u.username, u.email
+       FROM users u
+       JOIN room_users ru ON ru.user_id = u.id
+       WHERE ru.room_id = ? AND ru.left_at IS NULL`,
+      [roomId],
+    );
+    return rows;
+  }
+
+  // Fila cruda de membresía (activa o no) - para saber si alguien "abandonó" el chat individual
+  static async getMembershipRow(roomId, userId) {
+    const [rows] = await db.execute(
+      "SELECT * FROM room_users WHERE room_id = ? AND user_id = ?",
+      [roomId, userId],
+    );
+    return rows[0];
+  }
+
+  // Todos los miembros históricos de una sala, activos o no (para saber quién la abandonó)
+  static async getAllMembers(roomId) {
+    const [rows] = await db.execute(
+      "SELECT user_id, left_at FROM room_users WHERE room_id = ?",
+      [roomId],
     );
     return rows;
   }
@@ -62,32 +88,20 @@ module.exports = class Rooms {
     return result;
   }
 
-  // Lista los usuarios que pertenecen a una sala
-  static async getUsersInRoom(roomId) {
-    const [rows] = await db.execute(
-      `SELECT u.id, u.username, u.email
-       FROM users u
-       JOIN room_users ru ON ru.user_id = u.id
-       WHERE ru.room_id = ?`,
-      [roomId],
-    );
-    return rows;
-  }
-
-  // comprueba si ya existe un chat individual entre dos usuarios concretos
+  // Comprueba si ya existe un chat individual entre dos usuarios concretos
   static async findIndividual(userA, userB) {
     const [rows] = await db.execute(
       `SELECT r.id FROM rooms r
-     JOIN room_users ru1 ON ru1.room_id = r.id AND ru1.user_id = ?
-     JOIN room_users ru2 ON ru2.room_id = r.id AND ru2.user_id = ?
-     WHERE r.type = 'individual'
-     LIMIT 1`,
+       JOIN room_users ru1 ON ru1.room_id = r.id AND ru1.user_id = ?
+       JOIN room_users ru2 ON ru2.room_id = r.id AND ru2.user_id = ?
+       WHERE r.type = 'individual'
+       LIMIT 1`,
       [userA, userB],
     );
     return rows[0];
   }
 
-  // busca salas de GRUPO por nombre (para unirse a una ya existente)
+  // Busca salas de GRUPO por nombre (para unirse a una ya existente en vez de duplicar)
   static async searchGroups(query) {
     const [rows] = await db.execute(
       `SELECT id, name FROM rooms WHERE type = 'group' AND name LIKE ? LIMIT 10`,
@@ -104,16 +118,16 @@ module.exports = class Rooms {
     return rows[0];
   }
 
-  // miembro más antiguo de la sala (para reasignar el admin cuando el creador se va)
+  // Miembro ACTIVO más antiguo de la sala (para reasignar el admin cuando el creador se va)
   static async getOldestMember(roomId) {
     const [rows] = await db.execute(
-      "SELECT user_id FROM room_users WHERE room_id = ? ORDER BY joined_at ASC LIMIT 1",
+      "SELECT user_id FROM room_users WHERE room_id = ? AND left_at IS NULL ORDER BY joined_at ASC LIMIT 1",
       [roomId],
     );
     return rows[0];
   }
 
-  // cambia quién es el creador/admin de la sala
+  // Cambia quién es el creador/admin de la sala
   static async updateCreatedBy(roomId, newCreatorId) {
     const [result] = await db.execute(
       "UPDATE rooms SET created_by = ? WHERE id = ?",
@@ -122,16 +136,27 @@ module.exports = class Rooms {
     return result;
   }
 
-  // Elimina a un usuario de una sala (sirve tanto para "expulsar" como para "abandonar")
+  // Marca a un usuario como que ha abandonado la sala (soft delete, no borra la fila)
   static async removeUser(roomId, userId) {
     const [result] = await db.execute(
-      "DELETE FROM room_users WHERE room_id = ? AND user_id = ?",
+      "UPDATE room_users SET left_at = NOW() WHERE room_id = ? AND user_id = ?",
       [roomId, userId],
     );
     return result;
   }
 
-  // Elimina la sala si ya no hay usuarios (el ultimo usuario de la sala se va que seria el admin)
+  // "Revive" a alguien que había abandonado un chat individual: empieza de cero
+  // (joined_at se resetea, así el historial que vea arrancará desde este momento)
+  static async reviveMembership(roomId, userId) {
+    const [result] = await db.execute(
+      "UPDATE room_users SET left_at = NULL, joined_at = NOW() WHERE room_id = ? AND user_id = ?",
+      [roomId, userId],
+    );
+    return result;
+  }
+
+  // Elimina la sala por completo cuando ya no queda nadie activo dentro
+  // (ON DELETE CASCADE en la BBDD se encarga de borrar room_users y messages asociados)
   static async deleteRoom(roomId) {
     const [result] = await db.execute("DELETE FROM rooms WHERE id = ?", [
       roomId,

@@ -1,9 +1,13 @@
 <template>
     <div class="w-full h-full flex flex-col bg-gray-600 p-3 gap-2">
-        <p class="text-white font-semibold">{{ sala.displayName }}</p>
-        <!-- solo mostramos gestión de sala para GRUPOS -->
-        <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="text-white cursor-pointer" :size="20" />
-        <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="text-white cursor-pointer" :size="20" />
+        <!-- cabecera: nombre de la sala + acción según el tipo -->
+        <div class="flex justify-between items-center">
+            <p class="text-white font-semibold">{{ sala.displayName }}</p>
+            <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="text-white cursor-pointer"
+                :size="20" />
+            <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="text-white cursor-pointer"
+                :size="20" />
+        </div>
 
         <div ref="contenedorMensajes" class="w-full flex-1 bg-amber-100 overflow-y-auto p-4 flex flex-col gap-2">
             <div v-for="msg in mensajes" :key="msg.id"
@@ -49,15 +53,15 @@ const roomsStore = useRoomsStore()
 
 // carga el historial de la sala desde la BBDD (vía REST)
 async function cargarHistorial(roomId) {
-    const res = await fetch(`${API_URL}/messages/room/${roomId}`)
+    const res = await fetch(`${API_URL}/messages/room/${roomId}/${authStore.usuario.id}`)
     mensajes.value = await res.json()
     scrollAbajo()
 }
 
 // Eliminar chats tanto individuales como grupales
 async function eliminarChat() {
-  if (!confirm('¿Eliminar este chat? Solo se borrará de tu lista.')) return
-  await roomsStore.abandonarSala(props.sala.id)
+    if (!confirm('¿Eliminar este chat? Solo se borrará de tu lista.')) return
+    await roomsStore.abandonarSala(props.sala.id)
 }
 
 // cada vez que cambia la sala activa, nos unimos a la nueva y cargamos su historial

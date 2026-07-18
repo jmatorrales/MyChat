@@ -52,13 +52,22 @@ io.on("connection", (socket) => {
         created_at: new Date(),
       });
 
-      // avisamos a TODOS los miembros de la sala (excepto quien escribió) para que
-      // se les actualice la lista de chats sin refrescar (útil para el primer mensaje)
-      const miembros = await Rooms.getUsersInRoom(data.roomId);
-      miembros
+      const room = await Rooms.getById(data.roomId);
+
+      // si es un chat individual y el otro usuario lo había abandonado, lo revivimos
+      if (room.type === "individual") {
+        const miembros = await Rooms.getAllMembers(data.roomId);
+        const otro = miembros.find((m) => m.user_id !== data.userId);
+        if (otro && otro.left_at) {
+          await Rooms.reviveMembership(data.roomId, otro.user_id);
+        }
+      }
+
+      // avisamos a todos los activos (incluido el recién revivido) para que refresquen su lista
+      const activos = await Rooms.getUsersInRoom(data.roomId);
+      activos
         .filter((u) => u.id !== data.userId)
         .forEach((u) => io.to(`user_${u.id}`).emit("salas:actualizado"));
-        
     } catch (err) {
       console.error("Error guardando mensaje:", err);
     }
