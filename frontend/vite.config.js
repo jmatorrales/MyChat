@@ -6,14 +6,5 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: true, // TODO: Cambiar host a false antes de publicar
-    /** Ya no se usa
-     proxy: {
-      "/api": {
-        target: "http://localhost:3003",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
-    },
-     */
   },
 });

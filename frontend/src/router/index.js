@@ -28,32 +28,18 @@ const routes = [
   // --- ZONA USER ---
   {
     path: "/app",
-    component: () => import("../views/complete/users/UserLogedLayout.vue"),
-    meta: { requiresAuth: true, role: "user" },
+    component: () => import("../views/logedUsers/UserLogedLayout.vue"),
+    meta: { requiresAuth: true }, // ya no hace falta distinguir "role", solo estar logueado
     children: [
       {
         path: "",
         name: "salas",
-        component: () => import("../views/complete/users/Salas.vue"),
+        component: () => import("../views/logedUsers/Salas.vue"),
       },
       {
         path: "join/:roomId",
         name: "join-room",
-        component: () => import("../views/complete/users/JoinRoom.vue"),
-      },
-    ],
-  },
-
-  // --- ZONA ADMIN ---
-  {
-    path: "/admin",
-    component: () => import("../views/complete/admin/AdminLayout.vue"),
-    meta: { requiresAuth: true, role: "admin" },
-    children: [
-      {
-        path: "",
-        name: "admin-panel",
-        component: () => import("../views/complete/admin/AdminPanel.vue"),
+        component: () => import("../views/logedUsers/JoinRoom.vue"),
       },
     ],
   },
@@ -70,10 +56,6 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !authStore.usuario) {
     // guardamos la ruta a la que querías ir, para volver ahí tras el login
     return { path: "/login", query: { redirect: to.fullPath } };
-  }
-
-  if (to.meta.role && authStore.usuario?.role !== to.meta.role) {
-    return "/";
   }
 });
 

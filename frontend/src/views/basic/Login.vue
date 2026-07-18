@@ -48,8 +48,8 @@ const password = ref('')
 const remember = ref(false) // checkbox para recordar al usuario
 const error = ref('') // para mostrar el error en el template
 
-const router = useRouter()
-const route = useRoute() // TODO: Saber que diferencia hay
+const router = useRouter() // acceso al router: permite NAVEGAR por código (router.push, router.back...)
+const route = useRoute()   // acceso a la ruta actual: permite LEER datos de la URL (route.query, route.params...)
 const authStore = useAuthStore()
 
 onMounted(() => {
@@ -74,13 +74,8 @@ async function handleSubmit() {
         }
 
         // si veníamos de un enlace de invitación (u otra ruta protegida), volvemos ahí
-        if (route.query.redirect) {
-            router.push(route.query.redirect)
-        } else if (authStore.usuario.role === 'admin') { // redirige según el rol que devolvió el backend
-            router.push('/admin')
-        } else {
-            router.push('/app')
-        }
+        // si no, todos los usuarios logueados van a /app
+        router.push(route.query.redirect || '/app')
     } catch (err) {
         error.value = err.message
     }

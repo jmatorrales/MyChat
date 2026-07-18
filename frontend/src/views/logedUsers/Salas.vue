@@ -52,8 +52,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoomsStore } from '../../../stores/roomsStore'
-import ChatWindow from '../../../components/ChatWindow.vue'
+import { useRoomsStore } from '../../stores/roomsStore.js'
+import ChatWindow from '../../components/ChatWindow.vue'
 
 const roomsStore = useRoomsStore()
 

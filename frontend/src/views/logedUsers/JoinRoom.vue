@@ -7,7 +7,7 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRoomsStore } from '../../../stores/roomsStore'
+import { useRoomsStore } from '../../stores/roomsStore'
 
 const route = useRoute()
 const router = useRouter()

@@ -8,11 +8,11 @@
 
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
-import NavUser from '../../../components/NavUser.vue'
-import SettingsUsers from '../../../components/SettingsUsers.vue'
-import { useSocket } from '../../../composables/useSocket'
-import { useAuthStore } from '../../../stores/authStore'
-import { useRoomsStore } from '../../../stores/roomsStore'
+import NavUser from '../../components/NavUser.vue'
+import SettingsUsers from '../../components/SettingsUsers.vue'
+import { useSocket } from '../../composables/useSocket.js'
+import { useAuthStore } from '../../stores/authStore.js'
+import { useRoomsStore } from '../../stores/roomsStore.js'
 
 const authStore = useAuthStore()
 const roomsStore = useRoomsStore()
