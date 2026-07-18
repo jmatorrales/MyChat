@@ -2,7 +2,7 @@
 const db = require("../config/database");
 
 module.exports = class Rooms {
-  // Devuelve las salas ACTIVAS de un usuario (donde no las ha abandonado él mismo),
+  // Devuelve las salas ACTIVAS de un usuario, con el nombre resuelto y si tiene mensajes sin leer,
   // resolviendo el nombre a mostrar según el tipo:
   // - si es grupo -> el nombre real de la sala
   // - si es individual -> el username del OTRO participante (no el mío)
@@ -11,21 +11,29 @@ module.exports = class Rooms {
   static async getByUserId(userId) {
     const [rows] = await db.execute(
       `SELECT 
-         r.id, 
-         r.type, 
-         r.created_by,
-         CASE 
-           WHEN r.type = 'group' THEN r.name
-           ELSE otro.username
-         END AS displayName
-       FROM rooms r
-       JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
-       LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
-       LEFT JOIN users otro ON otro.id = ru_otro.user_id
-       WHERE r.type = 'group'
-          OR r.created_by = ?
-          OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
-      [userId, userId, userId],
+       r.id, 
+       r.type, 
+       r.created_by,
+       CASE 
+         WHEN r.type = 'group' THEN r.name
+         ELSE otro.username
+       END AS displayName,
+       -- hay mensajes sin leer si existe alguno posterior a la última vez que lo miró
+       -- (o posterior a cuando entró, si nunca lo ha mirado), y que no sea suyo propio
+       EXISTS (
+         SELECT 1 FROM messages m
+         WHERE m.room_id = r.id
+           AND m.user_id != ?
+           AND m.created_at > COALESCE(ru.last_read_at, ru.joined_at)
+       ) AS hasUnread
+     FROM rooms r
+     JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
+     LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
+     LEFT JOIN users otro ON otro.id = ru_otro.user_id
+     WHERE r.type = 'group'
+        OR r.created_by = ?
+        OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
+      [userId, userId, userId, userId],
     );
     return rows;
   }
@@ -41,15 +49,6 @@ module.exports = class Rooms {
       [roomId],
     );
     return rows;
-  }
-
-  // Fila cruda de membresía (activa o no) - para saber si alguien "abandonó" el chat individual
-  static async getMembershipRow(roomId, userId) {
-    const [rows] = await db.execute(
-      "SELECT * FROM room_users WHERE room_id = ? AND user_id = ?",
-      [roomId, userId],
-    );
-    return rows[0];
   }
 
   // Todos los miembros históricos de una sala, activos o no (para saber quién la abandonó)
@@ -79,10 +78,12 @@ module.exports = class Rooms {
     return result;
   }
 
-  // Añade un usuario a una sala (tabla intermedia room_users)
+  // Añade un usuario a una sala (tabla intermedia room_users). Si YA existía una fila (porque la había abandonado antes),
+  // la revive en vez de fallar por clave duplicada (room_id + user_id es la PK)
   static async addUser(roomId, userId) {
     const [result] = await db.execute(
-      "INSERT INTO room_users (room_id, user_id) VALUES (?, ?)",
+      `INSERT INTO room_users (room_id, user_id) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE left_at = NULL, joined_at = NOW()`,
       [roomId, userId],
     );
     return result;
@@ -145,11 +146,10 @@ module.exports = class Rooms {
     return result;
   }
 
-  // "Revive" a alguien que había abandonado un chat individual: empieza de cero
-  // (joined_at se resetea, así el historial que vea arrancará desde este momento)
-  static async reviveMembership(roomId, userId) {
+  // Marca una sala como leída por un usuario (se llama al abrir el chat)
+  static async markAsRead(roomId, userId) {
     const [result] = await db.execute(
-      "UPDATE room_users SET left_at = NULL, joined_at = NOW() WHERE room_id = ? AND user_id = ?",
+      "UPDATE room_users SET last_read_at = NOW() WHERE room_id = ? AND user_id = ?",
       [roomId, userId],
     );
     return result;

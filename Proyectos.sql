@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS room_users (
     user_id INT NOT NULL,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP NULL DEFAULT NULL,
+    last_read_at TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (room_id, user_id),
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

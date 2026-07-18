@@ -33,37 +33,35 @@ io.on("connection", (socket) => {
 
   // recibe un mensaje nuevo del cliente, lo guarda en BBDD, y lo reenvía a todos los conectados a esa sala
   socket.on("mensaje", async (data) => {
-    // data esperado: { roomId, userId, username, content }
     try {
+      const room = await Rooms.getById(data.roomId);
+
+      // si es un chat individual y el otro usuario lo había abandonado, lo revivimos
+      // ANTES de crear el mensaje -> así su nueva fecha de entrada queda <= la del mensaje,
+      // y el mensaje que lo revive no se filtra al cargar el historial
+      if (room.type === "individual") {
+        const miembros = await Rooms.getAllMembers(data.roomId);
+        const otro = miembros.find((m) => m.user_id !== data.userId);
+        if (otro && otro.left_at) {
+          await Rooms.addUser(data.roomId, otro.user_id); // upsert: revive
+        }
+      }
+
       const result = await Messages.create({
         room_id: data.roomId,
         user_id: data.userId,
         content: data.content,
       });
 
-      // reenviamos el mensaje ya "oficial" (con id y fecha reales de la BBDD)
-      // io.to(...) envía SOLO a los sockets unidos a esa room, no a todos los conectados al server
       io.to(`sala_${data.roomId}`).emit("mensaje", {
         id: result.insertId,
         room_id: data.roomId,
         user_id: data.userId,
         content: data.content,
-        username: data.username, // lo mandamos ya desde el front para no consultar de nuevo a la BBDD
+        username: data.username,
         created_at: new Date(),
       });
 
-      const room = await Rooms.getById(data.roomId);
-
-      // si es un chat individual y el otro usuario lo había abandonado, lo revivimos
-      if (room.type === "individual") {
-        const miembros = await Rooms.getAllMembers(data.roomId);
-        const otro = miembros.find((m) => m.user_id !== data.userId);
-        if (otro && otro.left_at) {
-          await Rooms.reviveMembership(data.roomId, otro.user_id);
-        }
-      }
-
-      // avisamos a todos los activos (incluido el recién revivido) para que refresquen su lista
       const activos = await Rooms.getUsersInRoom(data.roomId);
       activos
         .filter((u) => u.id !== data.userId)

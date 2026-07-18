@@ -36,18 +36,18 @@ exports.createIndividual = async (req, res) => {
   try {
     const { userA, userB } = req.body;
 
-    // si ya existe un chat individual entre estos dos usuarios, devolvemos ese id sin crear otro
     const existente = await Rooms.findIndividual(userA, userB);
     if (existente) {
+      // ya existía el chat -> revivimos la membresía de quien lo pide,
+      // por si lo había abandonado (addUser es un upsert, no rompe si ya estaba activo)
+      await Rooms.addUser(existente.id, userA);
       return res.status(200).json({ id: existente.id });
     }
 
-    // no existía -> lo creamos y metemos a los dos usuarios
     const result = await Rooms.createIndividual({ created_by: userA });
     await Rooms.addUser(result.insertId, userA);
     await Rooms.addUser(result.insertId, userB);
 
-    // avisamos al otro usuario en tiempo real, para que le aparezca el chat sin refrescar
     const io = getIO();
     if (io) io.to(`user_${userB}`).emit("salas:actualizado");
 
@@ -102,6 +102,17 @@ exports.getRoomInfo = async (req, res) => {
     res.status(500).json({ error: "Error al obtener la sala" });
   }
 };
+// Para marcar los mensajes leidos
+exports.markAsRead = async (req, res) => {
+  try {
+    const { roomId, userId } = req.body;
+    await Rooms.markAsRead(roomId, userId);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ evento: "error_marcar_leido", mensaje: err.message });
+    res.status(500).json({ error: "Error al marcar como leído" });
+  }
+};
 
 // Quita a un usuario de la sala: expulsión (solo el creador puede hacerlo con otros)
 // o abandono (cualquiera puede quitarse a sí mismo)
@@ -115,7 +126,9 @@ exports.removeUser = async (req, res) => {
     const esCreador = room.created_by === requestedBy;
 
     if (!esUnoMismo && !esCreador) {
-      return res.status(403).json({ error: "No tienes permiso para expulsar a este usuario" });
+      return res
+        .status(403)
+        .json({ error: "No tienes permiso para expulsar a este usuario" });
     }
 
     await Rooms.removeUser(roomId, userId); // ahora es soft delete (left_at)

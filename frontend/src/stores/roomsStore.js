@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useAuthStore } from "./authStore";
-import { API_URL } from '../config'
+import { API_URL } from "../config";
 
 export const useRoomsStore = defineStore("rooms", () => {
   const salas = ref([]); // lista de salas del usuario logueado
@@ -10,9 +10,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // trae las salas del usuario logueado
   async function fetchSalas() {
     const authStore = useAuthStore();
-    const res = await fetch(
-      `${API_URL}/rooms/user/${authStore.usuario.id}`,
-    );
+    const res = await fetch(`${API_URL}/rooms/user/${authStore.usuario.id}`);
     salas.value = await res.json();
   }
 
@@ -40,7 +38,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // crea una sala de grupo y refresca la lista
   async function crearGrupo(nombre) {
     const authStore = useAuthStore();
-    const res = await fetch(`${API_URL}/rooms/group"`, {
+    const res = await fetch(`${API_URL}/rooms/group`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: nombre, created_by: authStore.usuario.id }),
@@ -48,6 +46,15 @@ export const useRoomsStore = defineStore("rooms", () => {
     const data = await res.json();
     await fetchSalas();
     return data.id;
+  }
+
+  async function markAsRead(roomId) {
+    const authStore = useAuthStore();
+    await fetch(`${API_URL}/rooms/mark-read`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId, userId: authStore.usuario.id }),
+    });
   }
 
   // busca salas de GRUPO existentes por nombre (para unirse en vez de crear una duplicada)
@@ -69,9 +76,13 @@ export const useRoomsStore = defineStore("rooms", () => {
     return roomId;
   }
 
-  // marca una sala como "activa" -> es la que se muestra en el ChatWindow
+  // marca la sala como activa y, si tenía mensajes sin leer, la marca como leída
   function seleccionarSala(sala) {
     salaActiva.value = sala;
+    if (sala.hasUnread) {
+      sala.hasUnread = false; // feedback inmediato en la UI, sin esperar al backend
+      markAsRead(sala.id);
+    }
   }
 
   // trae la info de una sala (nombre, creador) + sus miembros
@@ -104,9 +115,7 @@ export const useRoomsStore = defineStore("rooms", () => {
 
   // pide al backend el QR de una URL cualquiera (usado para el enlace de invitación)
   async function getQR(url) {
-    const res = await fetch(
-      `${API_URL}/qr?url=${encodeURIComponent(url)}`,
-    );
+    const res = await fetch(`${API_URL}/qr?url=${encodeURIComponent(url)}`);
     const data = await res.json();
     return data.qr;
   }
@@ -118,6 +127,7 @@ export const useRoomsStore = defineStore("rooms", () => {
     buscarUsuarios,
     crearIndividual,
     crearGrupo,
+    markAsRead,
     buscarSalas,
     unirseGrupo,
     seleccionarSala,

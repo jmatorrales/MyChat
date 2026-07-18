@@ -1,46 +1,32 @@
 <template>
   <div class="flex h-full">
-    <!-- Columna izquierda: buscador + lista de salas + crear grupo -->
-    <div class="w-1/3 border-r flex flex-col">
-      <!-- Buscador: busca a la vez usuarios (para chat individual) y salas de grupo por nombre -->
-      <div class="p-3 border-b">
-        <input v-model="busqueda" @input="buscar" type="text" placeholder="Buscar usuario o sala..."
+    <div class="w-1/6 border-r flex flex-col">
+      <!-- Buscador: @usuario o #sala. Flechas para moverte, Enter para confirmar -->
+      <div class="p-3 border-b relative">
+        <input v-model="busqueda" @input="buscar" @keydown="onKeydown" type="text" placeholder="Buscar @usuario o #sala"
           class="w-full border rounded-lg px-3 py-2" />
 
-        <!-- resultados de usuarios: clic -> abre o crea el chat individual -->
-        <div v-if="resultadosUsuarios.length" class="mt-2 space-y-1">
-          <div v-for="user in resultadosUsuarios" :key="user.id" @click="iniciarChat(user.id)"
-            class="cursor-pointer p-2 hover:bg-gray-100 rounded">
-            {{ user.username }}
-          </div>
-        </div>
-
-        <!-- resultados de salas de grupo: clic -> se une a la sala existente -->
-        <div v-if="resultadosSalas.length" class="mt-2 space-y-1">
-          <div v-for="sala in resultadosSalas" :key="sala.id" @click="unirseASala(sala.id)"
-            class="cursor-pointer p-2 hover:bg-gray-100 rounded">
-            🏠 {{ sala.name }}
+        <!-- lista unificada de sugerencias: usuarios, salas, y "crear sala" -->
+        <div v-if="sugerencias.length" class="mt-2 space-y-1">
+          <div v-for="(item, i) in sugerencias" :key="item.type + item.id"
+            @mousedown.prevent="seleccionarSugerencia(item)" class="cursor-pointer p-2 rounded"
+            :class="i === indiceSeleccionado ? 'bg-blue-100' : 'hover:bg-gray-100'">
+            <span v-if="item.type === 'user'">@{{ item.label }}</span>
+            <span v-else-if="item.type === 'room'">#{{ item.label }}</span>
+            <span v-else class="text-blue-600">+ Crear sala "{{ item.label }}"</span>
           </div>
         </div>
       </div>
 
       <!-- Lista de salas/chats donde ya participa el usuario -->
-      <div class="flex-1 overflow-y-auto">
-        <div v-for="sala in roomsStore.salas" :key="sala.id" @click="roomsStore.seleccionarSala(sala)"
-          class="p-3 cursor-pointer hover:bg-gray-100"
-          :class="{ 'bg-gray-200': roomsStore.salaActiva?.id === sala.id }">
-          {{ sala.displayName }}
-        </div>
-      </div>
-
-      <!-- Crear sala de grupo nueva (Enter para confirmar) -->
-      <div class="p-3 border-t">
-        <input v-model="nuevoGrupo" @keyup.enter="crearGrupo" type="text" placeholder="Nombre de la nueva sala..."
-          class="w-full border rounded-lg px-3 py-2" />
+      <div v-for="sala in roomsStore.salas" :key="sala.id" @click="roomsStore.seleccionarSala(sala)"
+        class="p-3 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
+        :class="{ 'bg-gray-200': roomsStore.salaActiva?.id === sala.id }">
+        <span>{{ sala.displayName }}</span>
+        <Mail v-if="sala.hasUnread" class="text-orange-500" :size="16" />
       </div>
     </div>
 
-    <!-- Columna derecha: chat de la sala activa -->
     <div class="flex-1">
       <ChatWindow v-if="roomsStore.salaActiva" :sala="roomsStore.salaActiva" />
       <div v-else class="h-full flex items-center justify-center text-gray-400">
@@ -51,49 +37,106 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoomsStore } from '../../stores/roomsStore.js'
 import ChatWindow from '../../components/ChatWindow.vue'
+import { Mail } from '@lucide/vue'
 
 const roomsStore = useRoomsStore()
 
 const busqueda = ref('')
 const resultadosUsuarios = ref([])
 const resultadosSalas = ref([])
-const nuevoGrupo = ref('')
+const mostrarCrearSala = ref(false) // true cuando buscas una #sala que no existe todavía
+const nombreNuevaSala = ref('')
+const indiceSeleccionado = ref(-1) // fila resaltada por teclado, -1 = ninguna
 
 onMounted(() => {
-  roomsStore.fetchSalas() // carga la lista de salas del usuario logueado al entrar
+  roomsStore.fetchSalas()
 })
 
-// consulta usuarios y salas de grupo en paralelo por el mismo texto
+// lista unificada para pintar y navegar con flechas: usuarios, salas, y la opción de crear
+const sugerencias = computed(() => {
+  const lista = []
+  resultadosUsuarios.value.forEach((u) => lista.push({ type: 'user', id: u.id, label: u.username }))
+  resultadosSalas.value.forEach((s) => lista.push({ type: 'room', id: s.id, label: s.name }))
+  if (mostrarCrearSala.value) {
+    lista.push({ type: 'create', id: 'create', label: nombreNuevaSala.value })
+  }
+  return lista
+})
+
+// según el prefijo del texto, busca usuarios (@) o salas de grupo (#)
 async function buscar() {
-  resultadosUsuarios.value = await roomsStore.buscarUsuarios(busqueda.value)
-  resultadosSalas.value = await roomsStore.buscarSalas(busqueda.value)
+  const texto = busqueda.value.trim()
+  resultadosUsuarios.value = []
+  resultadosSalas.value = []
+  mostrarCrearSala.value = false
+  indiceSeleccionado.value = -1
+
+  if (texto.startsWith('@')) {
+    const query = texto.slice(1)
+    if (query) resultadosUsuarios.value = await roomsStore.buscarUsuarios(query)
+  } else if (texto.startsWith('#')) {
+    const query = texto.slice(1)
+    if (query) {
+      resultadosSalas.value = await roomsStore.buscarSalas(query)
+      const existeExacta = resultadosSalas.value.some(
+        (s) => s.name.toLowerCase() === query.toLowerCase()
+      )
+      if (!existeExacta) {
+        mostrarCrearSala.value = true
+        nombreNuevaSala.value = query
+      }
+    }
+  }
 }
 
-// abre (o crea, si no existía) el chat individual con ese usuario
-async function iniciarChat(userId) {
-  await roomsStore.crearIndividual(userId)
+// navegación con teclado: flechas mueven la selección, Enter confirma la resaltada
+function onKeydown(e) {
+  if (!sugerencias.value.length) return
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    indiceSeleccionado.value = (indiceSeleccionado.value + 1) % sugerencias.value.length
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    indiceSeleccionado.value =
+      indiceSeleccionado.value <= 0 ? sugerencias.value.length - 1 : indiceSeleccionado.value - 1
+  } else if (e.key === 'Enter') {
+    e.preventDefault()
+    // si no habías movido las flechas, Enter actúa sobre la primera sugerencia
+    const item = sugerencias.value[indiceSeleccionado.value] ?? sugerencias.value[0]
+    if (item) seleccionarSugerencia(item)
+  }
+}
+
+// ejecuta la acción correspondiente según el tipo de sugerencia (clic o Enter),
+// y abre automáticamente el chat resultante (nuevo o existente)
+async function seleccionarSugerencia(item) {
+  let roomId
+
+  if (item.type === 'user') {
+    roomId = await roomsStore.crearIndividual(item.id)
+  } else if (item.type === 'room') {
+    roomId = await roomsStore.unirseGrupo(item.id)
+  } else if (item.type === 'create') {
+    roomId = await roomsStore.crearGrupo(item.label)
+  }
+
   limpiarBusqueda()
-}
 
-// crea una sala de grupo nueva con el nombre escrito
-async function crearGrupo() {
-  if (!nuevoGrupo.value.trim()) return
-  await roomsStore.crearGrupo(nuevoGrupo.value)
-  nuevoGrupo.value = ''
-}
-
-// se une a una sala de grupo ya existente (encontrada en la búsqueda)
-async function unirseASala(roomId) {
-  await roomsStore.unirseGrupo(roomId)
-  limpiarBusqueda()
+  // como los métodos del store ya refrescan la lista (fetchSalas) antes de devolver el id,
+  // aquí ya podemos encontrar la sala recién creada/unida dentro de roomsStore.salas
+  const sala = roomsStore.salas.find((s) => s.id === roomId)
+  if (sala) roomsStore.seleccionarSala(sala)
 }
 
 function limpiarBusqueda() {
   busqueda.value = ''
   resultadosUsuarios.value = []
   resultadosSalas.value = []
+  mostrarCrearSala.value = false
+  indiceSeleccionado.value = -1
 }
 </script>

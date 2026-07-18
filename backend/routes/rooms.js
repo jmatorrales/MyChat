@@ -37,6 +37,9 @@ router.post(
   controller.createIndividual
 );
 
+// Ruta para marcar un mensaje leido
+router.post("/mark-read", controller.markAsRead);
+
 // añadir un usuario a una sala de grupo ya existente
 router.post(
   "/add-user",
