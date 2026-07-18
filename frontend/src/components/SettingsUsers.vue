@@ -23,14 +23,14 @@
             <div class="flex-1 p-6">
                 <div v-if="section === 'appearance'" class="flex flex-col gap-3">
                     <p class="mb-2">Elige un tema:</p>
-                    <button @click="themeStore.setTheme('yelow')"
-                        class="w-[150px] border border-yellow-200 bg-yellow-300 hover:border-yellow-600 hover:bg-yellow-500">Amarillo</button>
-                    <button @click="themeStore.setTheme('red')"
-                        class="w-[150px] border border-red-200 bg-red-300 hover:border-red-600 hover:bg-red-500">Rojo</button>
-                    <button @click="themeStore.setTheme('blue')"
-                        class="w-[150px] border border-blue-200 bg-blue-300 hover:border-blue-600 hover:bg-blue-500">Azul</button>
-                    <button @click="themeStore.setTheme('purple')"
-                        class="w-[150px] border border-purple-300 bg-purple-400 hover:border-purple-600 hover:bg-purple-500">Purpura</button>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button v-for="key in Object.keys(themeStore.themes)" :key="key"
+                            @click="themeStore.setTheme(key)"
+                            class="h-14 rounded-lg border-2 transition-transform hover:scale-105"
+                            :class="[themeStore.themes[key].swatch, themeStore.theme === key ? 'border-black' : 'border-transparent']"
+                            :title="key">
+                        </button>
+                    </div>
                 </div>
                 <div v-else-if="section === 'user'" class="flex flex-row gap-5">
                     <Construction class="text-orange-600" />

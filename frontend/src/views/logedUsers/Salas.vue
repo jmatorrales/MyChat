@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full">
-    <div class="w-1/6 border-r flex flex-col">
+    <div :class="themeStore.current.sidebarBg" class="w-1/6 border-r flex flex-col">
       <!-- Buscador: @usuario o #sala. Flechas para moverte, Enter para confirmar -->
       <div class="p-3 border-b relative">
         <input v-model="busqueda" @input="buscar" @keydown="onKeydown" type="text" placeholder="Buscar @usuario o #sala"
@@ -20,8 +20,10 @@
 
       <!-- Lista de salas/chats donde ya participa el usuario -->
       <div v-for="sala in roomsStore.salas" :key="sala.id" @click="roomsStore.seleccionarSala(sala)"
-        class="p-3 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
-        :class="{ 'bg-gray-200': roomsStore.salaActiva?.id === sala.id }">
+        class="p-3 cursor-pointer flex justify-between items-center" :class="[
+          themeStore.current.sidebarText,
+          roomsStore.salaActiva?.id === sala.id ? themeStore.current.sidebarActive : themeStore.current.sidebarHover
+        ]">
         <span>{{ sala.displayName }}</span>
         <Mail v-if="sala.hasUnread" class="text-orange-500" :size="16" />
       </div>
@@ -41,8 +43,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoomsStore } from '../../stores/roomsStore.js'
 import ChatWindow from '../../components/ChatWindow.vue'
 import { Mail } from '@lucide/vue'
+import { useThemeStore } from '../../stores/themeStore'
+
 
 const roomsStore = useRoomsStore()
+const themeStore = useThemeStore()
 
 const busqueda = ref('')
 const resultadosUsuarios = ref([])

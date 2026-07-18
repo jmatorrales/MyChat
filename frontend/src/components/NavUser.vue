@@ -1,6 +1,7 @@
 <template>
-    <div :class="themeStore.current.nav" class="flex flex-row justify-between items-center p-5 gap-3">
-        <p class="text-xl font-semibold" :class="themeStore.current.nav_home">MyChat</p>
+    <div :class="[themeStore.current.navBg, themeStore.current.navText]"
+        class="flex flex-row justify-between items-center p-5 gap-3">
+        <p class="text-xl font-semibold">MyChat</p>
         <div class="flex flex-row items-center gap-5">
             <Settings @click="uiStore.toggleSettings()" class="cursor-pointer" :size="iconSize" />
             <LogOut @click="handleLogout" class="cursor-pointer" :size="iconSize" />

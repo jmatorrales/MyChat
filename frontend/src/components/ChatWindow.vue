@@ -1,16 +1,16 @@
 <template>
-    <div class="w-full h-full flex flex-col bg-gray-600 p-3 gap-2">
-        <div class="flex justify-between items-center">
-            <p class="text-white font-semibold">{{ sala.displayName }}</p>
-            <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="text-white cursor-pointer"
-                :size="20" />
-            <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="text-white cursor-pointer"
-                :size="20" />
+    <div class="w-full h-full flex flex-col gap-2" :class="themeStore.current.chatBg">
+        <!-- cabecera con fondo del "navBg", contrasta con el fondo del chat -->
+        <div class="flex justify-between items-center p-3"
+            :class="[themeStore.current.headerBg, themeStore.current.headerText]">
+            <p class="font-semibold">{{ sala.displayName }}</p>
+            <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="cursor-pointer" :size="20" />
+            <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="cursor-pointer" :size="20" />
         </div>
 
-        <div ref="contenedorMensajes" class="w-full flex-1 bg-amber-100 overflow-y-auto p-4 flex flex-col gap-2">
+        <div ref="contenedorMensajes" class="w-full flex-1 overflow-y-auto p-4 flex flex-col gap-2">
             <div v-for="msg in mensajes" :key="msg.id"
-                :class="msg.user_id === authStore.usuario?.id ? 'ml-auto bg-blue-500 text-white' : 'mr-auto bg-rose-500'"
+                :class="msg.user_id === authStore.usuario?.id ? ['ml-auto', themeStore.current.bubbleMe] : ['mr-auto', themeStore.current.bubbleOther]"
                 class="px-4 py-2 rounded-2xl max-w-[70%]">
                 <p class="text-xs opacity-70">{{ msg.username }}</p>
                 {{ msg.content }}
@@ -18,26 +18,28 @@
         </div>
 
         <!-- barra de escritura: emojis + input + enviar -->
-        <div class="w-full flex flex-row justify-between items-center gap-3 shrink-0 relative">
-            <!-- botón para abrir/cerrar el selector de emojis (ref para poder excluirlo del "clic fuera") -->
+        <div class="w-full flex flex-row justify-between items-center gap-3 shrink-0 relative p-3">
+            <!-- botón de emojis: usa navBg para que combine con la cabecera -->
             <button ref="emojiButton" @click="showEmojiPicker = !showEmojiPicker" type="button"
-                class="p-3 rounded-full bg-gray-400 hover:bg-gray-300 shrink-0">
-                <Smile class="text-white" :size="20" />
+                class="p-3 rounded-full shrink-0" :class="[themeStore.current.headerBg, themeStore.current.headerText]">
+                <Smile :size="20" />
             </button>
 
-            <!-- panel de emojis: se posiciona justo encima del botón -->
+            <!-- panel de emojis: reutiliza los tokens de la sidebar (fondo + hover) -->
             <div v-if="showEmojiPicker" ref="emojiPanel"
-                class="absolute bottom-16 left-0 bg-white rounded-lg shadow-lg p-3 grid grid-cols-6 gap-1 w-64 max-h-52 overflow-y-auto z-10">
+                class="absolute bottom-16 left-0 rounded-lg shadow-lg p-3 grid grid-cols-6 gap-1 w-64 max-h-52 overflow-y-auto z-10"
+                :class="themeStore.current.sidebarBg">
                 <button v-for="emoji in emojis" :key="emoji" @click="insertarEmoji(emoji)" type="button"
-                    class="text-xl hover:bg-gray-100 rounded p-1">
+                    class="text-xl rounded p-1" :class="themeStore.current.sidebarHover">
                     {{ emoji }}
                 </button>
             </div>
 
             <input v-model="nuevoMensaje" @keyup.enter="enviarMensaje" type="text"
-                class="w-full rounded-full px-4 py-2">
-            <button @click="enviarMensaje" class="p-3 rounded-full bg-green-500 shrink-0">
-                <Send class="text-white" />
+                class="w-full rounded-full px-4 py-2 border"
+                :class="[themeStore.current.inputBg, themeStore.current.inputText]">
+            <button @click="enviarMensaje" class="p-3 rounded-full shrink-0" :class="themeStore.current.btn">
+                <Send />
             </button>
         </div>
 
@@ -51,6 +53,7 @@ import { Send, Info, Trash2, Smile } from '@lucide/vue'
 import { useSocket } from '../composables/useSocket'
 import { useAuthStore } from '../stores/authStore'
 import { useRoomsStore } from '../stores/roomsStore'
+import { useThemeStore } from '../stores/themeStore'
 import RoomInfo from './RoomInfo.vue'
 import { API_URL } from '../config'
 
@@ -60,6 +63,7 @@ const props = defineProps({
 
 const authStore = useAuthStore()
 const roomsStore = useRoomsStore()
+const themeStore = useThemeStore()
 const { mensajes, unirseSala, enviarMensaje: enviarPorSocket, escucharMensajes } = useSocket()
 
 const nuevoMensaje = ref('')
