@@ -6687,3 +6687,6 @@
 {"level":"info","message":{"ip":"192.168.1.42","metodo":"GET","ruta":"/rooms/user/1","status":304,"usuario":"anonimo"},"timestamp":"2026-07-18T17:14:44.066Z"}
 {"level":"info","message":{"ip":"192.168.1.42","metodo":"GET","ruta":"/rooms/user/2","status":304,"usuario":"anonimo"},"timestamp":"2026-07-18T17:14:45.254Z"}
 {"level":"info","message":{"ip":"192.168.1.42","metodo":"GET","ruta":"/rooms/user/2","status":304,"usuario":"anonimo"},"timestamp":"2026-07-18T17:14:50.256Z"}
+{"level":"info","message":{"ip":"192.168.1.42","metodo":"GET","ruta":"/rooms/user/2","status":304,"usuario":"anonimo"},"timestamp":"2026-07-18T17:14:55.256Z"}
+{"level":"info","message":{"ip":"192.168.1.42","metodo":"GET","ruta":"/rooms/user/2","status":304,"usuario":"anonimo"},"timestamp":"2026-07-18T17:15:00.256Z"}
+{"level":"info","message":{"ip":"192.168.1.42","metodo":"GET","ruta":"/rooms/user/2","status":304,"usuario":"anonimo"},"timestamp":"2026-07-18T17:15:05.256Z"}
