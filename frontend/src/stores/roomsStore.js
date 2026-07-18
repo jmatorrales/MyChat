@@ -91,6 +91,16 @@ export const useRoomsStore = defineStore("rooms", () => {
     return await res.json();
   }
 
+  // añade a OTRO usuario concreto a una sala de grupo (usado desde el panel de gestión, por el creador)
+  async function anadirAOtroUsuario(roomId, userId) {
+    await fetch(`${API_URL}/rooms/add-user`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId, userId }),
+    });
+    await fetchSalas();
+  }
+
   // expulsa a un usuario (o te quitas tú mismo si userId === tu propio id)
   async function removeUser(roomId, userId) {
     const authStore = useAuthStore();
@@ -132,6 +142,7 @@ export const useRoomsStore = defineStore("rooms", () => {
     unirseGrupo,
     seleccionarSala,
     fetchRoomInfo,
+    anadirAOtroUsuario,
     removeUser,
     abandonarSala,
     getQR,

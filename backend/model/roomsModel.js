@@ -16,24 +16,24 @@ module.exports = class Rooms {
        r.created_by,
        CASE 
          WHEN r.type = 'group' THEN r.name
+         WHEN otro.username IS NULL THEN CONCAT(yo.username, ' (Tú)')
          ELSE otro.username
        END AS displayName,
-       -- hay mensajes sin leer si existe alguno posterior a la última vez que lo miró
-       -- (o posterior a cuando entró, si nunca lo ha mirado), y que no sea suyo propio
        EXISTS (
          SELECT 1 FROM messages m
          WHERE m.room_id = r.id
            AND m.user_id != ?
            AND m.created_at > COALESCE(ru.last_read_at, ru.joined_at)
        ) AS hasUnread
-     FROM rooms r
-     JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
-     LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
-     LEFT JOIN users otro ON otro.id = ru_otro.user_id
-     WHERE r.type = 'group'
-        OR r.created_by = ?
-        OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
-      [userId, userId, userId, userId],
+        FROM rooms r
+        JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
+        LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
+        LEFT JOIN users otro ON otro.id = ru_otro.user_id
+        LEFT JOIN users yo ON yo.id = ?
+        WHERE r.type = 'group'
+            OR r.created_by = ?
+            OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
+      [userId, userId, userId, userId, userId],
     );
     return rows;
   }
@@ -87,6 +87,22 @@ module.exports = class Rooms {
       [roomId, userId],
     );
     return result;
+  }
+
+  // Busca un chat "contigo mismo": una sala individual donde el ÚNICO usuario que
+  // ha pertenecido alguna vez (activo o no) es este mismo userId. Se usa en vez de
+  // findIndividual cuando userA === userB, porque findIndividual no distingue eso.
+  static async findSelfChat(userId) {
+    const [rows] = await db.execute(
+      `SELECT r.id FROM rooms r
+     JOIN room_users ru ON ru.room_id = r.id
+     WHERE r.type = 'individual' AND r.created_by = ?
+     GROUP BY r.id
+     HAVING COUNT(DISTINCT ru.user_id) = 1 AND MAX(ru.user_id) = ?
+     LIMIT 1`,
+      [userId, userId],
+    );
+    return rows[0];
   }
 
   // Comprueba si ya existe un chat individual entre dos usuarios concretos

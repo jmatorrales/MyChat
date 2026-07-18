@@ -36,10 +36,22 @@ exports.createIndividual = async (req, res) => {
   try {
     const { userA, userB } = req.body;
 
+    if (userA === userB) {
+      // caso especial: chat contigo mismo, usamos la búsqueda dedicada
+      const propio = await Rooms.findSelfChat(userA);
+      if (propio) {
+        await Rooms.addUser(propio.id, userA); // revive si lo habías "eliminado"
+        return res.status(200).json({ id: propio.id });
+      }
+
+      const result = await Rooms.createIndividual({ created_by: userA });
+      await Rooms.addUser(result.insertId, userA);
+      return res.status(201).json({ id: result.insertId });
+    }
+
+    // caso normal: chat entre dos personas distintas
     const existente = await Rooms.findIndividual(userA, userB);
     if (existente) {
-      // ya existía el chat -> revivimos la membresía de quien lo pide,
-      // por si lo había abandonado (addUser es un upsert, no rompe si ya estaba activo)
       await Rooms.addUser(existente.id, userA);
       return res.status(200).json({ id: existente.id });
     }
