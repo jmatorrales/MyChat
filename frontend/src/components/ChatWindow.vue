@@ -95,6 +95,7 @@ import { useRoomsStore } from '../stores/roomsStore'
 import { useThemeStore } from '../stores/themeStore'
 import RoomInfo from './RoomInfo.vue'
 import { API_URL } from '../config'
+import { apiFetch } from '../config'
 
 const props = defineProps({
     sala: { type: Object, required: true }
@@ -168,7 +169,7 @@ const fondoStyle = computed(() => {
 
 // carga el historial de la sala desde la BBDD (vía REST)
 async function cargarHistorial(roomId) {
-    const res = await fetch(`${API_URL}/messages/room/${roomId}/${authStore.usuario.id}`)
+    const res = await apiFetch(`/messages/room/${roomId}/${authStore.usuario.id}`)
     mensajes.value = await res.json()
     scrollAbajo()
 }

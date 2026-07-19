@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useAuthStore } from "./authStore";
 import { API_URL } from "../config";
+import { apiFetch } from "../config"; // en vez de solo API_URL
 
 export const useRoomsStore = defineStore("rooms", () => {
   const salas = ref([]); // lista de salas del usuario logueado
@@ -10,14 +11,15 @@ export const useRoomsStore = defineStore("rooms", () => {
   // trae las salas del usuario logueado
   async function fetchSalas() {
     const authStore = useAuthStore();
-    const res = await fetch(`${API_URL}/rooms/user/${authStore.usuario.id}`);
+    // solo la ruta relativa, apiFetch pone el resto
+    const res = await apiFetch(`/rooms/user/${authStore.usuario.id}`);
     salas.value = await res.json();
   }
 
   // busca usuarios por nombre (para iniciar un chat nuevo)
   async function buscarUsuarios(query) {
     if (!query.trim()) return [];
-    const res = await fetch(`${API_URL}/users/search/${query}`);
+    const res = await apiFetch(`${API_URL}/users/search/${query}`);
     return await res.json();
   }
 
@@ -25,7 +27,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // (el backend ya comprueba si el chat existe, así que aquí no duplicamos)
   async function crearIndividual(otroUserId) {
     const authStore = useAuthStore();
-    const res = await fetch(`${API_URL}/rooms/individual`, {
+    const res = await apiFetch(`${API_URL}/rooms/individual`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userA: authStore.usuario.id, userB: otroUserId }),
@@ -38,7 +40,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // crea una sala de grupo y refresca la lista
   async function crearGrupo(nombre) {
     const authStore = useAuthStore();
-    const res = await fetch(`${API_URL}/rooms/group`, {
+    const res = await apiFetch(`${API_URL}/rooms/group`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: nombre, created_by: authStore.usuario.id }),
@@ -50,7 +52,7 @@ export const useRoomsStore = defineStore("rooms", () => {
 
   async function markAsRead(roomId) {
     const authStore = useAuthStore();
-    await fetch(`${API_URL}/rooms/mark-read`, {
+    await apiFetch(`${API_URL}/rooms/mark-read`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomId, userId: authStore.usuario.id }),
@@ -60,14 +62,14 @@ export const useRoomsStore = defineStore("rooms", () => {
   // busca salas de GRUPO existentes por nombre (para unirse en vez de crear una duplicada)
   async function buscarSalas(query) {
     if (!query.trim()) return [];
-    const res = await fetch(`${API_URL}/rooms/search/${query}`);
+    const res = await apiFetch(`${API_URL}/rooms/search/${query}`);
     return await res.json();
   }
 
   // une al usuario logueado a una sala de grupo ya existente y refresca la lista
   async function unirseGrupo(roomId) {
     const authStore = useAuthStore();
-    await fetch(`${API_URL}/rooms/add-user`, {
+    await apiFetch(`${API_URL}/rooms/add-user`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomId, userId: authStore.usuario.id }),
@@ -87,12 +89,12 @@ export const useRoomsStore = defineStore("rooms", () => {
 
   // trae la info de una sala (nombre, creador) + sus miembros
   async function fetchRoomInfo(roomId) {
-    const res = await fetch(`${API_URL}/rooms/${roomId}/info`);
+    const res = await apiFetch(`${API_URL}/rooms/${roomId}/info`);
     return await res.json();
   }
 
   async function updateRoomAvatar(roomId, avatar) {
-    await fetch(`${API_URL}/rooms/avatar`, {
+    await apiFetch(`${API_URL}/rooms/avatar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomId, avatar }),
@@ -102,7 +104,7 @@ export const useRoomsStore = defineStore("rooms", () => {
 
   // añade a OTRO usuario concreto a una sala de grupo (usado desde el panel de gestión, por el creador)
   async function anadirAOtroUsuario(roomId, userId) {
-    await fetch(`${API_URL}/rooms/add-user`, {
+    await apiFetch(`${API_URL}/rooms/add-user`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomId, userId }),
@@ -113,7 +115,7 @@ export const useRoomsStore = defineStore("rooms", () => {
   // expulsa a un usuario (o te quitas tú mismo si userId === tu propio id)
   async function removeUser(roomId, userId) {
     const authStore = useAuthStore();
-    await fetch(`${API_URL}/rooms/remove-user`, {
+    await apiFetch(`${API_URL}/rooms/remove-user`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -134,7 +136,7 @@ export const useRoomsStore = defineStore("rooms", () => {
 
   // pide al backend el QR de una URL cualquiera (usado para el enlace de invitación)
   async function getQR(url) {
-    const res = await fetch(`${API_URL}/qr?url=${encodeURIComponent(url)}`);
+    const res = await apiFetch(`${API_URL}/qr?url=${encodeURIComponent(url)}`);
     const data = await res.json();
     return data.qr;
   }

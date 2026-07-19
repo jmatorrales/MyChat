@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "/home/jmatorrales/Proyectos/Merit School/semana 18/MyChat/backend/logs/.7f985debac55541e36ca7de457439629f27a81a2-audit.json",
+    "files": [
+        {
+            "date": 1784474028995,
+            "name": "/home/jmatorrales/Proyectos/Merit School/semana 18/MyChat/backend/logs/2026-07-19-app.log",
+            "hash": "8150248e030c1843c3ee0addcfe560f48830e40bc4e8c5dca703f20e398ff694"
+        }
+    ],
+    "hashType": "sha256"
+}

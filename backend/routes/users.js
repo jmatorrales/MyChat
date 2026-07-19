@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controller/usersController");
 const { body, validationResult } = require("express-validator");
+const auth = require("../middlewares/auth");
 
 // Middleware reutilizable: si express-validator detectó errores, corta aquí con un 400
 const validar = (req, res, next) => {
@@ -17,13 +18,13 @@ const validar = (req, res, next) => {
 
 router.get("/email/:email", controller.getByEmail); // usado internamente para el LOGIN (buscar por email exacto)
 router.get("/username/:username", controller.getByUsername); // comprobar si un username ya está en uso (registro)
-router.get("/search/:query", controller.search); // buscador de usuarios por coincidencia parcial (nuevo chat)
-router.get("/:id", controller.getById); // uso interno: perfil, salas, mensajes...
-router.post("/background", controller.updateBackground);
-router.post("/avatar", controller.updateAvatar);
-router.post("/email", controller.updateEmail);
+router.get("/search/:query", auth, controller.search); // buscador de usuarios por coincidencia parcial (nuevo chat)
+router.get("/:id", auth, controller.getById); // uso interno: perfil, salas, mensajes...
+router.post("/background", auth, controller.updateBackground);
+router.post("/avatar", auth, controller.updateAvatar);
+router.post("/email", auth, controller.updateEmail);
 router.post(
-  "/password",
+  "/password",  auth,
   [
     body("newPassword")
       .isLength({ min: 6 })

@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useRoomsStore } from "./roomsStore";
 import { API_URL } from "../config";
+import { socket } from "../composables/useSocket"; // exporta también "socket" si no lo hace ya
 
 export const useAuthStore = defineStore("auth", () => {
   //* Recuperamos el usuario guardado del localStorage al cargar la app si ya lo estaba previamente
@@ -16,13 +17,15 @@ export const useAuthStore = defineStore("auth", () => {
     });
 
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
 
-    if (!res.ok) {
-      // si el backend responde 401/400/500, lanzamos el mensaje de error para pillarlo en el componente
-      throw new Error(data.error || "Error al iniciar sesión");
-    }
-    usuario.value = data;
-    localStorage.setItem("usuario", JSON.stringify(data)); // persistencia
+    usuario.value = data; // data ya incluye { id, username, email, avatar, ..., token }
+    localStorage.setItem("usuario", JSON.stringify(data));
+
+    // reconectamos el socket con el token recién obtenido
+    socket.auth.token = data.token;
+    socket.disconnect();
+    socket.connect();
   }
 
   //* Funcion para registrarse
@@ -111,6 +114,8 @@ export const useAuthStore = defineStore("auth", () => {
     const roomsStore = useRoomsStore();
     roomsStore.salas = [];
     roomsStore.salaActiva = null;
+
+    socket.disconnect(); // cortamos la conexión autenticada al salir
   }
 
   return {

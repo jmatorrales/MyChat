@@ -1,44 +1,49 @@
-import { io } from 'socket.io-client'
-import { ref } from 'vue'
-import { API_URL } from '../config'
+import { io } from "socket.io-client";
+import { ref } from "vue";
+import { API_URL } from "../config";
 
-// una única conexión compartida por toda la app (no una nueva por componente)
-const socket = io(API_URL)// ajusta el puerto si tu PORT en .env es distinto
+// obtenemos el token guardado (si existe) para autenticar el socket desde el primer momento
+function getToken() {
+  const usuario = JSON.parse(localStorage.getItem("usuario"));
+  return usuario?.token;
+}
 
-let ultimoUserId = null // recordamos quién eres para poder re-identificarnos tras una reconexión
-
-// cada vez que el socket se (re)conecta -> si ya sabíamos quién eras, avisamos otra vez al servidor
-socket.on('connect', () => {
-  if (ultimoUserId) socket.emit('identificarse', ultimoUserId)
-})
-
+// conexión única compartida por toda la app; el token viaja en el "auth" del handshake,
+// que socket.io valida en el middleware io.use() del servidor antes de aceptar la conexión
+export const socket = io(API_URL, {
+  auth: { token: getToken() },
+});
 
 export function useSocket() {
-  const mensajes = ref([])
-
-  function identificarse(userId) {
-    ultimoUserId = userId
-    socket.emit('identificarse', userId)
-  }
+  const mensajes = ref([]);
 
   function unirseSala(roomId) {
-    mensajes.value = [] // limpiamos al cambiar de sala
-    socket.emit('unirseSala', roomId)
+    mensajes.value = [];
+    socket.emit("unirseSala", roomId);
   }
 
-  function enviarMensaje({ roomId, userId, username, content }) {
-    socket.emit('mensaje', { roomId, userId, username, content })
+  // ya no hace falta mandar userId/username: el backend los conoce de forma segura
+  // a partir del token verificado (socket.user), así que solo mandamos lo necesario
+  function enviarMensaje({ roomId, avatar, content }) {
+    socket.emit("mensaje", { roomId, avatar, content });
   }
 
   function escucharMensajes(callback) {
-    socket.off('mensaje') // evita duplicar listeners al recambiar de componente
-    socket.on('mensaje', callback)
+    socket.off("mensaje");
+    socket.on("mensaje", callback);
   }
 
   function escucharActualizacionSalas(callback) {
-    socket.off('salas:actualizado')
-    socket.on('salas:actualizado', callback)
+    socket.off("salas:actualizado");
+    socket.on("salas:actualizado", callback);
   }
 
-  return { socket, mensajes, identificarse, unirseSala, enviarMensaje, escucharMensajes, escucharActualizacionSalas }
+  return {
+    socket,
+    mensajes,
+    unirseSala,
+    enviarMensaje,
+    escucharMensajes,
+    escucharActualizacionSalas,
+  };
 }

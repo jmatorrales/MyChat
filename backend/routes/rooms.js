@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controller/roomsController");
 const { body, validationResult } = require("express-validator");
+const auth = require("../middlewares/auth");
 
 // middleware reutilizable: corta la petición si hay errores de validación
 const validar = (req, res, next) => {
@@ -12,13 +13,14 @@ const validar = (req, res, next) => {
 };
 
 // listar las salas de un usuario (para pintar la columna izquierda)
-router.get("/user/:userId", controller.getMisSalas);
-router.get("/search/:query", controller.searchGroups);
-router.get("/:id/info", controller.getRoomInfo);
+router.get("/user/:userId", auth, controller.getMisSalas);
+router.get("/search/:query", auth, controller.searchGroups);
+router.get("/:id/info", auth, controller.getRoomInfo);
 
 // crear sala de GRUPO -> nombre obligatorio
 router.post(
   "/group",
+  auth,
   [
     body("name").notEmpty().withMessage("El nombre de la sala es obligatorio"),
     body("created_by").isInt().withMessage("created_by inválido"),
@@ -30,6 +32,7 @@ router.post(
 // crear chat INDIVIDUAL -> sin nombre, pero con los dos usuarios
 router.post(
   "/individual",
+  auth,
   [
     body("userA").isInt().withMessage("userA inválido"),
     body("userB").isInt().withMessage("userB inválido"),
@@ -39,11 +42,12 @@ router.post(
 );
 
 // Ruta para marcar un mensaje leido
-router.post("/mark-read", controller.markAsRead);
+router.post("/mark-read", auth, controller.markAsRead);
 
 // añadir un usuario a una sala de grupo ya existente
 router.post(
   "/add-user",
+  auth,
   [
     body("roomId").isInt().withMessage("roomId inválido"),
     body("userId").isInt().withMessage("userId inválido"),
@@ -52,11 +56,12 @@ router.post(
   controller.addUser,
 );
 
-router.post("/avatar", controller.updateAvatar);
+router.post("/avatar", auth, controller.updateAvatar);
 
 // Eliminamos usuarios de los grupos
 router.post(
   "/remove-user",
+  auth,
   [
     body("roomId").isInt().withMessage("roomId inválido"),
     body("userId").isInt().withMessage("userId inválido"),

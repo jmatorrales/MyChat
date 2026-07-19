@@ -1,71 +1,84 @@
-require("dotenv").config(); // carga las variables de entorno ANTES de usar cualquiera (PORT, DB_*, etc.)
-
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
 const Rooms = require("./model/roomsModel");
-const Messages = require("./model/messagesModel"); // para guardar mensajes desde el socket
+const Messages = require("./model/messagesModel");
 
-const app = require("./app"); // la app de Express, ya con todas las rutas REST montadas
-const server = http.createServer(app); // servidor HTTP base: Express y Socket.io comparten este mismo servidor/puerto
+const app = require("./app");
+const server = http.createServer(app);
 const { setIO } = require("./socket");
 
-// Configuramos Socket.io sobre el servidor, permitiendo conexiones desde otro origen (CORS)
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }, // en pruebas vale con *, en producción pon la IP/dominio concreto
+  cors: { origin: "*", methods: ["GET", "POST"] },
 });
-setIO(io); // guardamos la referencia para poder usarla desde los controllers
+setIO(io);
+
+// Middleware de socket.io: se ejecuta ANTES de aceptar cualquier conexión.
+// Verifica el token que manda el cliente en el "auth" del handshake;
+// si es válido, guarda los datos del usuario en el propio socket (socket.user)
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) {
+    return next(new Error("No autenticado"));
+  }
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = payload; // { id, username } - disponible en todos los listeners de este socket
+    next();
+  } catch (err) {
+    next(new Error("Token inválido o caducado"));
+  }
+});
 
 io.on("connection", (socket) => {
-  console.log("Usuario conectado:", socket.id);
+  console.log("Usuario conectado:", socket.id, "->", socket.user.username);
 
-  // el cliente nos dice quién es -> lo metemos en su "canal personal"
-  // así podemos avisarle de cosas aunque no esté viendo ninguna sala en concreto
-  socket.on("identificarse", (userId) => {
-    socket.join(`user_${userId}`);
-  });
+  // ya NO hace falta que el cliente "se identifique" mandando su userId;
+  // lo sabemos de forma segura porque viene verificado en socket.user
+  socket.join(`user_${socket.user.id}`);
 
-  // el cliente pide unirse a la "room" de socket.io correspondiente a una sala de la BBDD
-  // (una room de socket.io es solo una etiqueta interna para agrupar sockets, no crea nada en BBDD)
   socket.on("unirseSala", (roomId) => {
     socket.join(`sala_${roomId}`);
   });
 
-  // recibe un mensaje nuevo del cliente, lo guarda en BBDD, y lo reenvía a todos los conectados a esa sala
   socket.on("mensaje", async (data) => {
     try {
+      // usamos socket.user.id como autor real del mensaje, IGNORANDO data.userId
+      // (si no, cualquiera podría mandar mensajes haciéndose pasar por otro)
+      const userId = socket.user.id;
+      const username = socket.user.username;
+
       const room = await Rooms.getById(data.roomId);
 
-      // si es un chat individual y el otro usuario lo había abandonado, lo revivimos
-      // ANTES de crear el mensaje -> así su nueva fecha de entrada queda <= la del mensaje,
-      // y el mensaje que lo revive no se filtra al cargar el historial
       if (room.type === "individual") {
         const miembros = await Rooms.getAllMembers(data.roomId);
-        const otro = miembros.find((m) => m.user_id !== data.userId);
+        const otro = miembros.find((m) => m.user_id !== userId);
         if (otro && otro.left_at) {
-          await Rooms.addUser(data.roomId, otro.user_id); // upsert: revive
+          await Rooms.addUser(data.roomId, otro.user_id);
         }
       }
 
       const result = await Messages.create({
         room_id: data.roomId,
-        user_id: data.userId,
+        user_id: userId,
         content: data.content,
       });
 
       io.to(`sala_${data.roomId}`).emit("mensaje", {
         id: result.insertId,
         room_id: data.roomId,
-        user_id: data.userId,
+        user_id: userId,
         content: data.content,
-        username: data.username,
-        avatar: data.avatar,
+        username: username,
+        avatar: data.avatar, // esto sigue viniendo del cliente porque es solo visual, no sensible
         created_at: new Date(),
       });
 
       const activos = await Rooms.getUsersInRoom(data.roomId);
       activos
-        .filter((u) => u.id !== data.userId)
+        .filter((u) => u.id !== userId)
         .forEach((u) => io.to(`user_${u.id}`).emit("salas:actualizado"));
     } catch (err) {
       console.error("Error guardando mensaje:", err);
@@ -73,10 +86,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("Usuario desconectado");
+    console.log("Usuario desconectado:", socket.user.username);
   });
 });
-// Escucha del la dirección y puerto del servidor
+
 const PORT = process.env.PORT || 3080;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor en http://0.0.0.0:${PORT}`);

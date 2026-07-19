@@ -1,5 +1,6 @@
 const Users = require("../model/usersModel");
 const { logger } = require("../middlewares/logger");
+const jwt = require("jsonwebtoken");
 
 // Lista todos los usuarios (sin usar aún desde ninguna ruta activa)
 exports.getAll = async (req, res) => {
@@ -68,7 +69,7 @@ exports.getByUsername = async (req, res) => {
   }
 };
 
-// Login: compara email + password (bcrypt) y devuelve el usuario si es correcto
+// Login: compara email + password (bcrypt) y devuelve el usuario si es correcto generando un token
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -80,7 +81,16 @@ exports.login = async (req, res) => {
     }
 
     delete user.password_hash;
-    res.send(user); // de momento sin token, JWT pendiente de añadir
+
+    // generamos el token con los datos mínimos necesarios para identificar al usuario;
+    // expira en 7 días, pasado ese tiempo habría que volver a hacer login
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" },
+    );
+
+    res.send({ ...user, token }); // el usuario recibe sus datos + el token en la misma respuesta
   } catch (err) {
     logger.error({ evento: "error_login", mensaje: err.message });
     res.status(500).json({ error: "Error al iniciar sesión" });

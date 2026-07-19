@@ -17,14 +17,13 @@ import { useRoomsStore } from '../../stores/roomsStore.js'
 
 const authStore = useAuthStore()
 const roomsStore = useRoomsStore()
-const { identificarse, escucharActualizacionSalas } = useSocket()
+const { escucharActualizacionSalas } = useSocket()
 
 let intervalo = null
 
 onMounted(() => {
-  identificarse(authStore.usuario.id)
 
-  // aviso en tiempo real (rápido, cuando funciona)
+  // aviso en tiempo real (rápido, cuando funciona), el servidor sabe quién eres por el token del socket
   escucharActualizacionSalas(() => {
     roomsStore.fetchSalas()
   })
