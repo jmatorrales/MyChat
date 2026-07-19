@@ -14,28 +14,39 @@ module.exports = class Rooms {
        r.id, 
        r.type, 
        r.created_by,
+       r.avatar AS roomAvatar, -- avatar del GRUPO (solo aplica si type='group')
        CASE 
          WHEN r.type = 'group' THEN r.name
          WHEN otro.username IS NULL THEN CONCAT(yo.username, ' (Tú)')
          ELSE otro.username
        END AS displayName,
+       otro.avatar AS otherAvatar,
        EXISTS (
          SELECT 1 FROM messages m
          WHERE m.room_id = r.id
            AND m.user_id != ?
            AND m.created_at > COALESCE(ru.last_read_at, ru.joined_at)
        ) AS hasUnread
-        FROM rooms r
-        JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
-        LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
-        LEFT JOIN users otro ON otro.id = ru_otro.user_id
-        LEFT JOIN users yo ON yo.id = ?
-        WHERE r.type = 'group'
-            OR r.created_by = ?
-            OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
+     FROM rooms r
+     JOIN room_users ru ON ru.room_id = r.id AND ru.user_id = ? AND ru.left_at IS NULL
+     LEFT JOIN room_users ru_otro ON ru_otro.room_id = r.id AND ru_otro.user_id != ? AND r.type = 'individual'
+     LEFT JOIN users otro ON otro.id = ru_otro.user_id
+     LEFT JOIN users yo ON yo.id = ?
+     WHERE r.type = 'group'
+        OR r.created_by = ?
+        OR EXISTS (SELECT 1 FROM messages m WHERE m.room_id = r.id)`,
       [userId, userId, userId, userId, userId],
     );
     return rows;
+  }
+
+  // Actualiza la imagen de un grupo (solo aplica a salas de tipo 'group')
+  static async updateAvatar(roomId, avatar) {
+    const [result] = await db.execute(
+      "UPDATE rooms SET avatar = ? WHERE id = ?",
+      [avatar, roomId],
+    );
+    return result;
   }
 
   // Lista los usuarios ACTIVOS de una sala (para el panel de gestión y el cálculo de nuevo admin)

@@ -85,17 +85,16 @@
                     <!-- Avatar: si el usuario ya tiene uno se muestra la imagen, si no, un círculo
                          con su inicial como placeholder. El icono de cámara abre el selector de archivo -->
                     <div class="flex flex-col items-center gap-2">
-                        <div class="relative">
+                        <div class="relative group cursor-pointer" @click="$refs.avatarInput.click()">
                             <img v-if="authStore.usuario.avatar" :src="authStore.usuario.avatar"
-                                class="w-24 h-24 rounded-full object-cover" />
+                                class="w-24 h-24 rounded-full object-cover group-hover:opacity-75 transition-opacity" />
                             <div v-else
-                                class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl text-white font-semibold">
+                                class="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center text-3xl text-white font-semibold group-hover:opacity-75 transition-opacity">
                                 {{ authStore.usuario.username[0].toUpperCase() }}
                             </div>
-                            <button @click="$refs.avatarInput.click()"
-                                class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-1.5 hover:bg-blue-700">
+                            <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-1.5 shadow">
                                 <Camera :size="14" />
-                            </button>
+                            </div>
                         </div>
                         <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="subirAvatar" />
                         <p class="font-semibold text-lg">{{ authStore.usuario.username }}</p>

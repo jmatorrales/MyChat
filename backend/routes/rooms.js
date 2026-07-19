@@ -6,7 +6,8 @@ const { body, validationResult } = require("express-validator");
 // middleware reutilizable: corta la petición si hay errores de validación
 const validar = (req, res, next) => {
   const errores = validationResult(req);
-  if (!errores.isEmpty()) return res.status(400).json({ errores: errores.array() });
+  if (!errores.isEmpty())
+    return res.status(400).json({ errores: errores.array() });
   next();
 };
 
@@ -23,7 +24,7 @@ router.post(
     body("created_by").isInt().withMessage("created_by inválido"),
   ],
   validar,
-  controller.createGroup
+  controller.createGroup,
 );
 
 // crear chat INDIVIDUAL -> sin nombre, pero con los dos usuarios
@@ -34,7 +35,7 @@ router.post(
     body("userB").isInt().withMessage("userB inválido"),
   ],
   validar,
-  controller.createIndividual
+  controller.createIndividual,
 );
 
 // Ruta para marcar un mensaje leido
@@ -48,8 +49,10 @@ router.post(
     body("userId").isInt().withMessage("userId inválido"),
   ],
   validar,
-  controller.addUser
+  controller.addUser,
 );
+
+router.post("/avatar", controller.updateAvatar);
 
 // Eliminamos usuarios de los grupos
 router.post(
@@ -60,7 +63,7 @@ router.post(
     body("requestedBy").isInt().withMessage("requestedBy inválido"),
   ],
   validar,
-  controller.removeUser
+  controller.removeUser,
 );
 
 module.exports = router;

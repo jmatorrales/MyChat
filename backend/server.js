@@ -59,6 +59,7 @@ io.on("connection", (socket) => {
         user_id: data.userId,
         content: data.content,
         username: data.username,
+        avatar: data.avatar,
         created_at: new Date(),
       });
 

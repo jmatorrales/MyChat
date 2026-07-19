@@ -91,6 +91,15 @@ export const useRoomsStore = defineStore("rooms", () => {
     return await res.json();
   }
 
+  async function updateRoomAvatar(roomId, avatar) {
+    await fetch(`${API_URL}/rooms/avatar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId, avatar }),
+    });
+    await fetchSalas();
+  }
+
   // añade a OTRO usuario concreto a una sala de grupo (usado desde el panel de gestión, por el creador)
   async function anadirAOtroUsuario(roomId, userId) {
     await fetch(`${API_URL}/rooms/add-user`, {
@@ -142,6 +151,7 @@ export const useRoomsStore = defineStore("rooms", () => {
     unirseGrupo,
     seleccionarSala,
     fetchRoomInfo,
+    updateRoomAvatar,
     anadirAOtroUsuario,
     removeUser,
     abandonarSala,

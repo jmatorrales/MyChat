@@ -114,6 +114,21 @@ exports.getRoomInfo = async (req, res) => {
     res.status(500).json({ error: "Error al obtener la sala" });
   }
 };
+// Para la imagen avatar del chat grupal
+exports.updateAvatar = async (req, res) => {
+  try {
+    const { roomId, avatar } = req.body;
+    await Rooms.updateAvatar(roomId, avatar);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({
+      evento: "error_actualizar_avatar_sala",
+      mensaje: err.message,
+    });
+    res.status(500).json({ error: "Error al actualizar el avatar de la sala" });
+  }
+};
+
 // Para marcar los mensajes leidos
 exports.markAsRead = async (req, res) => {
   try {

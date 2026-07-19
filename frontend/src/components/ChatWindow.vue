@@ -2,7 +2,7 @@
     <div class="w-full h-full flex flex-col gap-2 bg-center bg-cover" :class="[
         authStore.usuario.bg_type === 'solid' ? themeStore.current.chatBg : 'bg-contain'
     ]" :style="fondoStyle">
-        <!-- cabecera con fondo del "navBg", contrasta con el fondo del chat -->
+        <!-- cabecera con fondo del "headerBg", contrasta con el fondo del chat -->
         <div class="flex justify-between items-center p-3"
             :class="[themeStore.current.headerBg, themeStore.current.headerText]">
             <p class="font-semibold">{{ sala.displayName }}</p>
@@ -11,17 +11,44 @@
         </div>
 
         <div ref="contenedorMensajes" class="w-full flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-            <div v-for="msg in mensajes" :key="msg.id"
-                :class="msg.user_id === authStore.usuario?.id ? ['ml-auto', themeStore.current.bubbleMe] : ['mr-auto', themeStore.current.bubbleOther]"
-                class="px-4 py-2 rounded-2xl max-w-[70%]">
-                <p class="text-xs opacity-70">{{ msg.username }}</p>
-                {{ msg.content }}
-            </div>
+            <template v-for="msg in mensajes" :key="msg.id">
+                <!-- SALA DE GRUPO: con avatar en mensajes ajenos.
+                     max-w-[75%] va en el contenedor flex exterior (mide el ancho real disponible);
+                     la burbuja usa min-w-0 para poder encogerse correctamente dentro de un flex,
+                     y break-words para que las palabras largas no generen scroll lateral.
+                     El redondeo es asimétrico: la esquina pegada al avatar queda recta ("pico"),
+                     simulando el efecto bocadillo de chat sin necesidad de CSS extra -->
+                <div v-if="sala.type === 'group'" class="flex items-start gap-2 max-w-[75%]"
+                    :class="msg.user_id === authStore.usuario?.id ? 'ml-auto flex-row-reverse' : 'mr-auto'">
+                    <img v-if="msg.user_id !== authStore.usuario?.id && msg.avatar" :src="msg.avatar"
+                        class="w-6 h-6 rounded-full object-cover shrink-0" />
+                    <div v-else-if="msg.user_id !== authStore.usuario?.id"
+                        class="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-xs text-white shrink-0">
+                        {{ msg.username[0].toUpperCase() }}
+                    </div>
+                    <div :class="[
+                        msg.user_id === authStore.usuario?.id
+                            ? themeStore.current.bubbleMe + ' rounded-tl-2xl rounded-bl-2xl rounded-br-2xl'
+                            : themeStore.current.bubbleOther + ' rounded-tr-2xl rounded-br-2xl rounded-bl-2xl'
+                    ]" class="px-4 py-2 min-w-0 break-words">
+                        <p class="text-xs opacity-70">{{ msg.username }}</p>
+                        {{ msg.content }}
+                    </div>
+                </div>
+
+                <!-- CHAT INDIVIDUAL: sin avatar, burbuja simple con las 4 esquinas redondeadas.
+                     break-words evita el scroll lateral -->
+                <div v-else
+                    :class="msg.user_id === authStore.usuario?.id ? 'ml-auto ' + themeStore.current.bubbleMe : 'mr-auto ' + themeStore.current.bubbleOther"
+                    class="px-4 py-2 rounded-2xl max-w-[75%] break-words">
+                    {{ msg.content }}
+                </div>
+            </template>
         </div>
 
-        <!-- barra de escritura: emojis + input + enviar -->
-        <div class="w-full flex flex-row justify-between items-center gap-3 shrink-0 relative p-3">
-            <!-- botón de emojis: usa navBg para que combine con la cabecera -->
+        <!-- barra de escritura: emojis + textarea auto-expandible + enviar -->
+        <div class="w-full flex flex-row justify-between items-end gap-3 shrink-0 relative p-3">
+            <!-- botón de emojis: usa headerBg para que combine con la cabecera -->
             <button ref="emojiButton" @click="showEmojiPicker = !showEmojiPicker" type="button"
                 class="p-3 rounded-full shrink-0" :class="[themeStore.current.headerBg, themeStore.current.headerText]">
                 <Smile :size="20" />
@@ -37,9 +64,14 @@
                 </button>
             </div>
 
-            <input v-model="nuevoMensaje" @keyup.enter="enviarMensaje" type="text"
-                class="w-full rounded-full px-4 py-2 border"
-                :class="[themeStore.current.inputBg, themeStore.current.inputText]">
+            <!-- textarea en vez de input: empieza en 1 línea (rows="1") y crece con @input
+                 hasta max-h-32, momento en el que empieza a hacer scroll interno en vez de seguir creciendo.
+                 Enter envía el mensaje, Shift+Enter hace salto de línea normal (ver onKeydownMensaje) -->
+            <textarea ref="textareaMensaje" v-model="nuevoMensaje" @keydown="onKeydownMensaje" @input="ajustarAltura"
+                rows="1" placeholder="Escribe un mensaje..."
+                class="w-full rounded-2xl px-4 py-2 border resize-none overflow-y-auto max-h-32 leading-normal no-scrollbar"
+                :class="[themeStore.current.inputBg, themeStore.current.inputText]"></textarea>
+
             <button @click="enviarMensaje" class="p-3 rounded-full shrink-0" :class="themeStore.current.btn">
                 <Send />
             </button>
@@ -70,6 +102,7 @@ const { mensajes, unirseSala, enviarMensaje: enviarPorSocket, escucharMensajes }
 
 const nuevoMensaje = ref('')
 const contenedorMensajes = ref(null)
+const textareaMensaje = ref(null) // referencia al textarea, para poder medir y ajustar su altura
 const showRoomInfo = ref(false)
 
 // --- selector de emojis ---
@@ -86,6 +119,7 @@ const emojis = [
 // añade el emoji pulsado al final del texto; no cerramos el panel para poder meter varios seguidos
 function insertarEmoji(emoji) {
     nuevoMensaje.value += emoji
+    nextTick(() => ajustarAltura()) // el emoji puede hacer que el texto ya no quepa en una línea
 }
 
 // cierra el panel si el clic fue fuera del panel Y fuera del botón que lo abre
@@ -110,6 +144,7 @@ onUnmounted(() => {
     document.removeEventListener('click', handleClickFuera)
 })
 
+// cada vez que cambia la sala activa, nos unimos a la nueva y cargamos su historial
 watch(() => props.sala.id, (nuevoId) => {
     if (nuevoId) {
         unirseSala(nuevoId)
@@ -138,8 +173,7 @@ async function eliminarChat() {
     await roomsStore.abandonarSala(props.sala.id)
 }
 
-
-
+// escuchamos mensajes nuevos que lleguen por socket
 escucharMensajes((msg) => {
     if (msg.room_id === props.sala.id) {
         mensajes.value.push(msg)
@@ -147,16 +181,34 @@ escucharMensajes((msg) => {
     }
 })
 
+// Enter envía el mensaje; Shift+Enter hace un salto de línea normal dentro del textarea
+function onKeydownMensaje(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        enviarMensaje()
+    }
+}
+
+// ajusta la altura del textarea al contenido real, respetando el límite max-h-32 marcado por CSS
+function ajustarAltura() {
+    const el = textareaMensaje.value
+    if (!el) return
+    el.style.height = 'auto' // reseteamos primero para poder medir el scrollHeight real (si no, solo crecería)
+    el.style.height = el.scrollHeight + 'px'
+}
+
 function enviarMensaje() {
     if (!nuevoMensaje.value.trim() || !authStore.usuario) return
     enviarPorSocket({
         roomId: props.sala.id,
         userId: authStore.usuario.id,
         username: authStore.usuario.username,
+        avatar: authStore.usuario.avatar,
         content: nuevoMensaje.value,
     })
     nuevoMensaje.value = ''
     showEmojiPicker.value = false // cerramos el panel al enviar, por limpieza
+    nextTick(() => ajustarAltura()) // volvemos a la altura de una línea tras vaciar el campo
 }
 
 function scrollAbajo() {

@@ -22,12 +22,23 @@
 
       <!-- Lista de salas/chats donde ya participa el usuario -->
       <div v-for="sala in roomsStore.salas" :key="sala.id" @click="roomsStore.seleccionarSala(sala)"
-        class="p-3 cursor-pointer flex justify-between items-center" :class="[
+        class="p-3 cursor-pointer flex items-center gap-2" :class="[
           themeStore.current.sidebarText,
           roomsStore.salaActiva?.id === sala.id ? themeStore.current.sidebarActive : themeStore.current.sidebarHover
         ]">
-        <span>{{ sala.displayName }}</span>
-        <Mail v-if="sala.hasUnread" class="text-orange-500" :size="16" />
+        <!-- grupo -> icono genérico; individual -> avatar del otro usuario (o inicial si no tiene) -->
+        <Users v-if="sala.type === 'group' && !sala.roomAvatar"
+          class="w-8 h-8 rounded-full bg-gray-300 p-1.5 text-white shrink-0" />
+        <img v-else-if="sala.type === 'group' && sala.roomAvatar" :src="sala.roomAvatar"
+          class="w-8 h-8 rounded-full object-cover shrink-0" />
+        <img v-else-if="sala.otherAvatar" :src="sala.otherAvatar" class="w-8 h-8 rounded-full object-cover shrink-0" />
+        <div v-else
+          class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-xs text-white shrink-0">
+          {{ sala.displayName[0]?.toUpperCase() }}
+        </div>
+
+        <span class="flex-1">{{ sala.displayName }}</span>
+        <Mail v-if="sala.hasUnread" class="text-orange-500 shrink-0" :size="16" />
       </div>
     </div>
 
@@ -44,7 +55,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoomsStore } from '../../stores/roomsStore.js'
 import ChatWindow from '../../components/ChatWindow.vue'
-import { Mail } from '@lucide/vue'
+import { Mail, Users } from '@lucide/vue'
 import { useThemeStore } from '../../stores/themeStore'
 
 
