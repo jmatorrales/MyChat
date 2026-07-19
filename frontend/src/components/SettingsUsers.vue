@@ -47,10 +47,10 @@
                     </div>
 
                     <!-- selector de fondo de chat: color liso, presets por tema, o imagen personalizada -->
+                    <!-- selector de fondo de chat: color liso, imágenes de la carpeta backgrounds, o personalizada -->
                     <div>
                         <div class="flex justify-between items-center mb-2">
                             <p>Fondo del chat:</p>
-                            <!-- solo se muestra "Restablecer" si el fondo activo no es ya el color liso -->
                             <button v-if="authStore.usuario.bg_type !== 'solid'" @click="elegirSolido"
                                 class="text-xs text-gray-500 hover:underline">
                                 Restablecer
@@ -58,15 +58,15 @@
                         </div>
 
                         <div class="grid grid-cols-4 gap-2">
-                            <!-- una miniatura por cada tema preset (frontend/public/backgrounds/{key}.jpg) -->
-                            <div v-for="key in Object.keys(themeStore.themes)" :key="key" class="relative">
-                                <img :src="`/backgrounds/${key}.jpg`" @click="elegirPreset(key)"
+                            <!-- una miniatura por cada imagen que haya en backend/public/backgrounds -->
+                            <div v-for="file in fondosDisponibles" :key="file" class="relative">
+                                <img :src="`${API_URL}/backgrounds/${file}`" @click="elegirPreset(file)"
                                     class="h-14 w-full object-cover rounded cursor-pointer"
-                                    :class="esPresetActivo(key) ? 'ring-2 ring-black' : ''" />
+                                    :class="esPresetActivo(file) ? 'ring-2 ring-black' : ''" />
                             </div>
 
                             <!-- casilla de imagen personalizada: si NO hay una subida, muestra un "+";
-                                 si YA hay una (bg_type === 'custom'), esa misma casilla se convierte en preview -->
+             si YA hay una (bg_type === 'custom'), esa misma casilla se convierte en preview -->
                             <div class="relative">
                                 <div v-if="authStore.usuario.bg_type !== 'custom'" @click="$refs.fileInput.click()"
                                     class="h-14 w-full flex items-center justify-center border-2 border-dashed rounded cursor-pointer text-gray-400 hover:text-gray-600 hover:border-gray-500">
@@ -77,7 +77,6 @@
                             </div>
                         </div>
 
-                        <!-- input real oculto; se activa por clic en la casilla de arriba -->
                         <input ref="fileInput" type="file" accept="image/*" class="hidden"
                             @change="subirPersonalizado" />
                         <p class="text-xs text-gray-400 mt-1">Personalizado: haz clic en el recuadro con "+" para subir
@@ -152,49 +151,52 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { X, Palette, User, Plus, Camera, Info } from '@lucide/vue'
 import { useThemeStore } from '../stores/themeStore'
 import { useUiStore } from '../stores/uiStore'
 import { useAuthStore } from '../stores/authStore'
+import { API_URL } from '../config'
 
 const themeStore = useThemeStore()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 
-const section = ref('appearance') // apartado activo del modal, por defecto apariencia
+const section = ref('appearance')
 
 // ---------- FONDO DE CHAT ----------
 
-// activa el color liso del tema como fondo
+const fondosDisponibles = ref([]) // nombres de archivo listados desde backend/public/backgrounds
+
+onMounted(async () => {
+    fondosDisponibles.value = await authStore.fetchBackgrounds()
+})
+
 function elegirSolido() {
     authStore.updateBackground('solid', null)
 }
 
-// activa la imagen preset del tema indicado
-function elegirPreset(themeKey) {
-    authStore.updateBackground('preset', `/backgrounds/${themeKey}.jpg`)
+// activa la imagen preset elegida; guardamos la URL completa, ya no depende de ningún tema fijo
+function elegirPreset(file) {
+    authStore.updateBackground('preset', `${API_URL}/backgrounds/${file}`)
 }
 
-// true si el preset mostrado es el que está activo ahora mismo
-function esPresetActivo(themeKey) {
-    return authStore.usuario.bg_type === 'preset' && authStore.usuario.bg_value === `/backgrounds/${themeKey}.jpg`
+function esPresetActivo(file) {
+    return authStore.usuario.bg_type === 'preset' && authStore.usuario.bg_value === `${API_URL}/backgrounds/${file}`
 }
 
-// convierte el archivo elegido a base64 y lo guarda como fondo personalizado
 function subirPersonalizado(e) {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-        authStore.updateBackground('custom', reader.result) // reader.result ya es un data URL base64
+        authStore.updateBackground('custom', reader.result)
     }
     reader.readAsDataURL(file)
 }
 
 // ---------- AVATAR ----------
 
-// convierte la foto elegida a base64 y la guarda como avatar del usuario
 function subirAvatar(e) {
     const file = e.target.files[0]
     if (!file) return
@@ -205,9 +207,9 @@ function subirAvatar(e) {
 
 // ---------- EMAIL ----------
 
-const nuevoEmail = ref(authStore.usuario.email) // precargado con el email actual
-const mensajeEmail = ref('')   // feedback tras guardar (éxito o error)
-const errorEmail = ref(false)  // true si el último intento falló (pinta el mensaje en rojo)
+const nuevoEmail = ref(authStore.usuario.email)
+const mensajeEmail = ref('')
+const errorEmail = ref(false)
 
 async function guardarEmail() {
     mensajeEmail.value = ''
@@ -231,7 +233,6 @@ const errorPassword = ref(false)
 async function guardarPassword() {
     mensajePassword.value = ''
 
-    // ambas contraseñas son obligatorias antes de llamar al backend
     if (!passwordActual.value.trim() || !passwordNueva.value.trim()) {
         errorPassword.value = true
         mensajePassword.value = 'Debes rellenar ambos campos'

@@ -2,7 +2,8 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useRoomsStore } from "./roomsStore";
 import { API_URL } from "../config";
-import { socket } from "../composables/useSocket"; // exporta también "socket" si no lo hace ya
+import { socket } from "../composables/useSocket";
+import { apiFetch } from "../config";
 
 export const useAuthStore = defineStore("auth", () => {
   //* Recuperamos el usuario guardado del localStorage al cargar la app si ya lo estaba previamente
@@ -19,10 +20,9 @@ export const useAuthStore = defineStore("auth", () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Error al iniciar sesión");
 
-    usuario.value = data; // data ya incluye { id, username, email, avatar, ..., token }
+    usuario.value = data;
     localStorage.setItem("usuario", JSON.stringify(data));
 
-    // reconectamos el socket con el token recién obtenido
     socket.auth.token = data.token;
     socket.disconnect();
     socket.connect();
@@ -44,7 +44,7 @@ export const useAuthStore = defineStore("auth", () => {
       throw new Error(mensaje);
     }
 
-    return data; // devuelve { id: ... }
+    return data;
   }
 
   async function checkUsername(username) {
@@ -53,13 +53,20 @@ export const useAuthStore = defineStore("auth", () => {
     return data.disponible;
   }
 
+  // Trae la lista de imágenes disponibles como fondo (carpeta backend/public/backgrounds).
+  // Función independiente, no anidada, para poder llamarla desde cualquier componente
+  async function fetchBackgrounds() {
+    const res = await apiFetch("/backgrounds-list");
+    return await res.json(); // array de nombres de archivo, ej: ["playa.jpg", "montana.jpg"]
+  }
+
   // Actualiza el fondo de chat del usuario logueado, tanto en backend como en el store local
   async function updateBackground(bg_type, bg_value) {
-    await fetch(`${API_URL}/users/background`, {
+    await apiFetch("/users/background", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: usuario.value.id, bg_type, bg_value }),
     });
+
     // reflejamos el cambio de inmediato en memoria, sin esperar a un refresco de página
     usuario.value.bg_type = bg_type;
     usuario.value.bg_value = bg_value;
@@ -68,9 +75,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   // Sube/actualiza el avatar del usuario logueado
   async function updateAvatar(avatar) {
-    await fetch(`${API_URL}/users/avatar`, {
+    await apiFetch("/users/avatar", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: usuario.value.id, avatar }),
     });
     usuario.value.avatar = avatar;
@@ -79,9 +85,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   // Cambia el email del usuario logueado
   async function updateEmail(email) {
-    const res = await fetch(`${API_URL}/users/email`, {
+    const res = await apiFetch("/users/email", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: usuario.value.id, email }),
     });
     const data = await res.json();
@@ -93,9 +98,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   // Cambia la contraseña, requiere la actual para verificarla en el backend
   async function updatePassword(currentPassword, newPassword) {
-    const res = await fetch(`${API_URL}/users/password`, {
+    const res = await apiFetch("/users/password", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId: usuario.value.id,
         currentPassword,
@@ -110,12 +114,11 @@ export const useAuthStore = defineStore("auth", () => {
   function logout() {
     usuario.value = null;
     localStorage.removeItem("usuario");
-    // limpiamos también el estado de salas, para que no queden referencias colgando
     const roomsStore = useRoomsStore();
     roomsStore.salas = [];
     roomsStore.salaActiva = null;
 
-    socket.disconnect(); // cortamos la conexión autenticada al salir
+    socket.disconnect();
   }
 
   return {
@@ -123,6 +126,7 @@ export const useAuthStore = defineStore("auth", () => {
     login,
     register,
     checkUsername,
+    fetchBackgrounds,
     updateBackground,
     updateAvatar,
     updateEmail,

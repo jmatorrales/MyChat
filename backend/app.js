@@ -11,6 +11,8 @@ const usersRouter = require('./routes/users');
 const roomsRouter = require('./routes/rooms');
 const messagesRouter = require('./routes/messages');
 const qrRouter = require('./routes/qr');
+const path = require('path');
+const backgroundsRouter = require('./routes/backgroundsChat');
 
 //* Middleware: permite leer JSON del body (req.body) en las peticiones
 app.use(express.json());
@@ -36,6 +38,8 @@ app.use('/users', usersRouter);
 app.use('/rooms', roomsRouter);
 app.use('/messages', messagesRouter);
 app.use('/qr', qrRouter);
+app.use('/backgrounds', express.static(path.join(__dirname, 'public/backgrounds')));
+app.use('/backgrounds-list', backgroundsRouter);
 
 // Exportamos la app para que server.js la use como base del servidor HTTP
 module.exports = app;

@@ -46,10 +46,9 @@ CREATE TABLE IF NOT EXISTS messages (
 -- USUARIO ESTÁNDAR PARA PRUEBAS - user: demo password: demo123 (hasheada)
 INSERT INTO users (username, email, password_hash) VALUES ('demo', 'demo@test.com', '$2b$10$/nTSXDxaGRCo9A25dX8LUuqCY9ts2i6znHefjedSXl.xDvvdTIjAC');
 
-SELECT * FROM users;
-SELECT * FROM rooms;
-SELECT * FROM room_users;
-SELECT * FROM messages;
-describe rooms;
-
+-- SELECT * FROM users;
+-- SELECT * FROM rooms;
+-- SELECT * FROM room_users;
+-- SELECT * FROM messages;
+-- describe rooms;
 -- drop database mychat_db;
