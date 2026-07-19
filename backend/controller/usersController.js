@@ -13,13 +13,21 @@ exports.getByEmail = async (req, res) => {
     const user = await Users.getByEmail(req.params.email);
 
     if (!user) {
-      logger.warn({ evento: "usuario_no_encontrado", email: req.params.email, ip: req.ip });
+      logger.warn({
+        evento: "usuario_no_encontrado",
+        email: req.params.email,
+        ip: req.ip,
+      });
       return res.status(404).send({ error: "Usuario no encontrado" });
     }
     delete user.password_hash; // nunca exponemos el hash al frontend
     res.send(user);
   } catch (err) {
-    logger.error({ evento: "error_buscar_usuario", mensaje: err.message, ip: req.ip });
+    logger.error({
+      evento: "error_buscar_usuario",
+      mensaje: err.message,
+      ip: req.ip,
+    });
     res.status(500).json({ error: "Error al buscar el Usuario" });
   }
 };
@@ -29,13 +37,21 @@ exports.getById = async (req, res) => {
   try {
     const user = await Users.getById(req.params.id);
     if (!user) {
-      logger.warn({ evento: "usuario_no_encontrado", id: req.params.id, ip: req.ip });
+      logger.warn({
+        evento: "usuario_no_encontrado",
+        id: req.params.id,
+        ip: req.ip,
+      });
       return res.status(404).send({ error: "Usuario no encontrado" });
     }
     delete user.password_hash;
     res.send(user);
   } catch (err) {
-    logger.error({ evento: "error_buscar_usuario", mensaje: err.message, ip: req.ip });
+    logger.error({
+      evento: "error_buscar_usuario",
+      mensaje: err.message,
+      ip: req.ip,
+    });
     res.status(500).json({ error: "Error al buscar el usuario" });
   }
 };
@@ -102,5 +118,50 @@ exports.updateBackground = async (req, res) => {
   } catch (err) {
     logger.error({ evento: "error_actualizar_fondo", mensaje: err.message });
     res.status(500).json({ error: "Error al actualizar el fondo" });
+  }
+};
+
+exports.updateAvatar = async (req, res) => {
+  try {
+    const { userId, avatar } = req.body;
+    await Users.updateAvatar(userId, avatar);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ evento: "error_actualizar_avatar", mensaje: err.message });
+    res.status(500).json({ error: "Error al actualizar el avatar" });
+  }
+};
+
+exports.updateEmail = async (req, res) => {
+  try {
+    const { userId, email } = req.body;
+    await Users.updateEmail(userId, email);
+    res.json({ ok: true });
+  } catch (err) {
+    // el email tiene UNIQUE en la BBDD -> si ya está en uso, MySQL lanza ER_DUP_ENTRY
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ error: "Ese email ya está en uso" });
+    }
+    logger.error({ evento: "error_actualizar_email", mensaje: err.message });
+    res.status(500).json({ error: "Error al actualizar el email" });
+  }
+};
+
+exports.updatePassword = async (req, res) => {
+  try {
+    const { userId, currentPassword, newPassword } = req.body;
+    const resultado = await Users.updatePassword(
+      userId,
+      currentPassword,
+      newPassword,
+    );
+
+    if (!resultado.ok) {
+      return res.status(400).json({ error: resultado.error });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ evento: "error_actualizar_password", mensaje: err.message });
+    res.status(500).json({ error: "Error al actualizar la contraseña" });
   }
 };

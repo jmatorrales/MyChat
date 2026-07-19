@@ -63,6 +63,47 @@ export const useAuthStore = defineStore("auth", () => {
     localStorage.setItem("usuario", JSON.stringify(usuario.value));
   }
 
+  // Sube/actualiza el avatar del usuario logueado
+  async function updateAvatar(avatar) {
+    await fetch(`${API_URL}/users/avatar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: usuario.value.id, avatar }),
+    });
+    usuario.value.avatar = avatar;
+    localStorage.setItem("usuario", JSON.stringify(usuario.value));
+  }
+
+  // Cambia el email del usuario logueado
+  async function updateEmail(email) {
+    const res = await fetch(`${API_URL}/users/email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: usuario.value.id, email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Error al actualizar el email");
+
+    usuario.value.email = email;
+    localStorage.setItem("usuario", JSON.stringify(usuario.value));
+  }
+
+  // Cambia la contraseña, requiere la actual para verificarla en el backend
+  async function updatePassword(currentPassword, newPassword) {
+    const res = await fetch(`${API_URL}/users/password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: usuario.value.id,
+        currentPassword,
+        newPassword,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok)
+      throw new Error(data.error || "Error al actualizar la contraseña");
+  }
+
   function logout() {
     usuario.value = null;
     localStorage.removeItem("usuario");
@@ -72,5 +113,15 @@ export const useAuthStore = defineStore("auth", () => {
     roomsStore.salaActiva = null;
   }
 
-  return { usuario, login, register, checkUsername, updateBackground, logout };
+  return {
+    usuario,
+    login,
+    register,
+    checkUsername,
+    updateBackground,
+    updateAvatar,
+    updateEmail,
+    updatePassword,
+    logout,
+  };
 });

@@ -64,4 +64,44 @@ module.exports = class Users {
     );
     return result;
   }
+
+  // Actualiza el avatar del usuario (base64, igual que el fondo de chat personalizado)
+  static async updateAvatar(userId, avatar) {
+    const [result] = await db.execute(
+      "UPDATE users SET avatar = ? WHERE id = ?",
+      [avatar, userId],
+    );
+    return result;
+  }
+
+  // Cambia el email del usuario
+  static async updateEmail(userId, newEmail) {
+    const [result] = await db.execute(
+      "UPDATE users SET email = ? WHERE id = ?",
+      [newEmail, userId],
+    );
+    return result;
+  }
+
+  // Cambia la contraseña, verificando primero que la actual sea correcta.
+  // Devuelve { ok: false, error } si algo falla, o { ok: true } si se actualizó.
+  static async updatePassword(userId, currentPassword, newPassword) {
+    const [rows] = await db.execute(
+      "SELECT password_hash FROM users WHERE id = ?",
+      [userId],
+    );
+    const user = rows[0];
+    if (!user) return { ok: false, error: "Usuario no encontrado" };
+
+    const correcta = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!correcta)
+      return { ok: false, error: "La contraseña actual no es correcta" };
+
+    const nuevoHash = await bcrypt.hash(newPassword, 10);
+    await db.execute("UPDATE users SET password_hash = ? WHERE id = ?", [
+      nuevoHash,
+      userId,
+    ]);
+    return { ok: true };
+  }
 };

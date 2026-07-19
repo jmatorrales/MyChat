@@ -1,6 +1,7 @@
 <template>
-    <div class="w-full h-full flex flex-col gap-2 bg-center bg-cover bg-no-repeat"
-        :class="authStore.usuario.bg_type === 'solid' ? themeStore.current.chatBg : ''" :style="fondoStyle">
+    <div class="w-full h-full flex flex-col gap-2 bg-center bg-cover" :class="[
+        authStore.usuario.bg_type === 'solid' ? themeStore.current.chatBg : 'bg-contain'
+    ]" :style="fondoStyle">
         <!-- cabecera con fondo del "navBg", contrasta con el fondo del chat -->
         <div class="flex justify-between items-center p-3"
             :class="[themeStore.current.headerBg, themeStore.current.headerText]">

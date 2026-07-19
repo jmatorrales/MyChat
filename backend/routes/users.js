@@ -15,11 +15,23 @@ const validar = (req, res, next) => {
 
 //router.get('/', controller.getAll) // listar todos - sin usar por ahora (sin protección de admin)
 
-router.get("/email/:email", controller.getByEmail);     // usado internamente para el LOGIN (buscar por email exacto)
+router.get("/email/:email", controller.getByEmail); // usado internamente para el LOGIN (buscar por email exacto)
 router.get("/username/:username", controller.getByUsername); // comprobar si un username ya está en uso (registro)
-router.get("/search/:query", controller.search);        // buscador de usuarios por coincidencia parcial (nuevo chat)
-router.get("/:id", controller.getById);                  // uso interno: perfil, salas, mensajes...
+router.get("/search/:query", controller.search); // buscador de usuarios por coincidencia parcial (nuevo chat)
+router.get("/:id", controller.getById); // uso interno: perfil, salas, mensajes...
 router.post("/background", controller.updateBackground);
+router.post("/avatar", controller.updateAvatar);
+router.post("/email", controller.updateEmail);
+router.post(
+  "/password",
+  [
+    body("newPassword")
+      .isLength({ min: 6 })
+      .withMessage("La nueva contraseña debe tener al menos 6 caracteres"),
+  ],
+  validar,
+  controller.updatePassword,
+);
 
 // login: valida formato de email y que password no esté vacío
 router.post(
@@ -29,7 +41,7 @@ router.post(
     body("password").notEmpty().withMessage("La contraseña es obligatoria"),
   ],
   validar,
-  controller.login
+  controller.login,
 );
 
 // registro: valida username, email y longitud mínima de password
