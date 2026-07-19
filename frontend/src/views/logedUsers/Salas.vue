@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full">
+  <div class="flex h-full min-h-0">
     <div :class="themeStore.current.sidebarBg" class="w-1/6 border-r flex flex-col">
       <!-- Buscador: @usuario o #sala. Flechas para moverte, Enter para confirmar -->
       <div class="p-3 border-b relative">
@@ -42,7 +42,7 @@
       </div>
     </div>
 
-    <div class="flex-1">
+    <div class="flex-1 min-h-0">
       <ChatWindow v-if="roomsStore.salaActiva" :sala="roomsStore.salaActiva" />
       <div v-else class="h-full flex items-center justify-center text-gray-400">
         Selecciona un chat para empezar

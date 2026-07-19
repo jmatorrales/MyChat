@@ -1,5 +1,5 @@
 <template>
-    <div class="w-full h-full flex flex-col gap-2 bg-center bg-cover" :class="[
+    <div class="w-full h-full flex flex-col gap-2 min-h-0 bg-center bg-cover" :class="[
         authStore.usuario.bg_type === 'solid' ? themeStore.current.chatBg : 'bg-contain'
     ]" :style="fondoStyle">
         <!-- cabecera con fondo del "headerBg", contrasta con el fondo del chat -->
@@ -10,15 +10,19 @@
             <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="cursor-pointer" :size="20" />
         </div>
 
-        <div ref="contenedorMensajes" class="w-full flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+        <!-- overflow-x-hidden: si algo intenta desbordarse por ancho, se queda contenido aquí
+             y no arrastra scroll horizontal a toda la app (lista de salas, cabecera, etc.) -->
+        <div ref="contenedorMensajes" class="w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-2">
             <template v-for="msg in mensajes" :key="msg.id">
-                <!-- SALA DE GRUPO: con avatar en mensajes ajenos.
-                     max-w-[75%] va en el contenedor flex exterior (mide el ancho real disponible);
-                     la burbuja usa min-w-0 para poder encogerse correctamente dentro de un flex,
-                     y break-words para que las palabras largas no generen scroll lateral.
+                <!-- ============ BURBUJA DE GRUPO (con avatar) ============
+                     max-w-[75%] + min-w-0 van en el contenedor flex EXTERIOR (fila avatar+burbuja):
+                     sin min-w-0 aquí, Flexbox no deja que la fila se encoja por debajo del contenido,
+                     aunque tenga max-w puesto (bug clásico de Flexbox).
+                     break-all: rompe la línea incluso en medio de una palabra/cadena sin espacios
+                     (necesario para mensajes tipo "aaaaaaaaaa..." que no tienen ningún punto de corte natural).
                      El redondeo es asimétrico: la esquina pegada al avatar queda recta ("pico"),
                      simulando el efecto bocadillo de chat sin necesidad de CSS extra -->
-                <div v-if="sala.type === 'group'" class="flex items-start gap-2 max-w-[75%]"
+                <div v-if="sala.type === 'group'" class="flex items-start gap-2 max-w-[75%] min-w-0"
                     :class="msg.user_id === authStore.usuario?.id ? 'ml-auto flex-row-reverse' : 'mr-auto'">
                     <img v-if="msg.user_id !== authStore.usuario?.id && msg.avatar" :src="msg.avatar"
                         class="w-6 h-6 rounded-full object-cover shrink-0" />
@@ -30,17 +34,18 @@
                         msg.user_id === authStore.usuario?.id
                             ? themeStore.current.bubbleMe + ' rounded-tl-2xl rounded-bl-2xl rounded-br-2xl'
                             : themeStore.current.bubbleOther + ' rounded-tr-2xl rounded-br-2xl rounded-bl-2xl'
-                    ]" class="px-4 py-2 min-w-0 break-words">
+                    ]" class="px-4 py-2 min-w-0 break-all">
                         <p class="text-xs opacity-70">{{ msg.username }}</p>
                         {{ msg.content }}
                     </div>
                 </div>
 
-                <!-- CHAT INDIVIDUAL: sin avatar, burbuja simple con las 4 esquinas redondeadas.
-                     break-words evita el scroll lateral -->
+                <!-- ============ BURBUJA INDIVIDUAL (sin avatar) ============
+                     Aquí no hay fila extra (no hay avatar), así que max-w-[75%] va directo
+                     en la propia burbuja. break-all por la misma razón que en la de grupo -->
                 <div v-else
                     :class="msg.user_id === authStore.usuario?.id ? 'ml-auto ' + themeStore.current.bubbleMe : 'mr-auto ' + themeStore.current.bubbleOther"
-                    class="px-4 py-2 rounded-2xl max-w-[75%] break-words">
+                    class="px-4 py-2 rounded-2xl max-w-[75%] break-all">
                     {{ msg.content }}
                 </div>
             </template>

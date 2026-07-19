@@ -1,8 +1,9 @@
 <template>
   <div class="flex flex-col h-screen">
     <NavUser />
-    <RouterView class="flex-1" /> <!-- aquí se renderiza Salas.vue -->
-    <SettingsUsers /> <!-- modal de ajustes, se muestra/oculta con uiStore.showSettings -->
+    <RouterView class="flex-1 min-h-0" />
+    <!-- min-h-0: permite que el contenido interior haga scroll propio, sin forzar la altura de toda la página -->
+    <SettingsUsers />
   </div>
 </template>
 
