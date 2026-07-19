@@ -43,8 +43,8 @@ CREATE TABLE IF NOT EXISTS messages (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- USUARIO ESTÁNDAR PARA PRUEBAS - user: admin password: admin123 (hasheada)
-INSERT INTO users (username, email, password_hash) VALUES ('admin', 'admin@noreplay.mychat.com', '$2b$10$0kKlnt97SwWnA5Fb7EqWDuWZ.Xg2E1lpphEnrez0wcWCWWDw9WTm2');
+-- USUARIO ESTÁNDAR PARA PRUEBAS - user: demo password: demo123 (hasheada)
+INSERT INTO users (username, email, password_hash) VALUES ('demo', 'demo@test.com', '$2b$10$/nTSXDxaGRCo9A25dX8LUuqCY9ts2i6znHefjedSXl.xDvvdTIjAC');
 
 SELECT * FROM users;
 SELECT * FROM rooms;

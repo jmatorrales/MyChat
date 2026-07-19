@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-col h-screen">
+    <div class="flex flex-col h-[100dvh]">
         <NavComponent />
         <RouterView class="flex-1" />
     </div>

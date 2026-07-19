@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen">
+  <div class="flex flex-col h-[100dvh]">
     <NavUser />
     <RouterView class="flex-1 min-h-0" />
     <!-- min-h-0: permite que el contenido interior haga scroll propio, sin forzar la altura de toda la página -->
