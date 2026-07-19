@@ -55,4 +55,13 @@ module.exports = class Users {
     );
     return result;
   }
+
+  // Actualiza la preferencia de fondo de chat de un usuario
+  static async updateBackground(userId, { bg_type, bg_value }) {
+    const [result] = await db.execute(
+      "UPDATE users SET bg_type = ?, bg_value = ? WHERE id = ?",
+      [bg_type, bg_value, userId],
+    );
+    return result;
+  }
 };

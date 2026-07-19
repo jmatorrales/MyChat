@@ -7,3 +7,6 @@
 {"level":"error","message":{"evento":"error_anadir_usuario_sala","mensaje":"Duplicate entry '4-2' for key 'room_users.PRIMARY'"},"timestamp":"2026-07-18T16:48:28.375Z"}
 {"level":"error","message":{"evento":"error_anadir_usuario_sala","mensaje":"Duplicate entry '4-2' for key 'room_users.PRIMARY'"},"timestamp":"2026-07-18T16:48:35.890Z"}
 {"level":"error","message":{"evento":"error_anadir_usuario_sala","mensaje":"Duplicate entry '4-2' for key 'room_users.PRIMARY'"},"timestamp":"2026-07-18T16:48:53.906Z"}
+{"level":"error","message":{"evento":"error_actualizar_fondo","mensaje":"Unknown column 'bg_value' in 'field list'"},"timestamp":"2026-07-19T09:20:11.695Z"}
+{"level":"error","message":{"evento":"error_actualizar_fondo","mensaje":"Unknown column 'bg_value' in 'field list'"},"timestamp":"2026-07-19T09:20:15.673Z"}
+{"level":"error","message":{"evento":"error_actualizar_fondo","mensaje":"Unknown column 'bg_value' in 'field list'"},"timestamp":"2026-07-19T09:24:16.229Z"}

@@ -19,6 +19,7 @@ router.get("/email/:email", controller.getByEmail);     // usado internamente pa
 router.get("/username/:username", controller.getByUsername); // comprobar si un username ya está en uso (registro)
 router.get("/search/:query", controller.search);        // buscador de usuarios por coincidencia parcial (nuevo chat)
 router.get("/:id", controller.getById);                  // uso interno: perfil, salas, mensajes...
+router.post("/background", controller.updateBackground);
 
 // login: valida formato de email y que password no esté vacío
 router.post(

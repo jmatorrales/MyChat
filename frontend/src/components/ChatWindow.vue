@@ -1,5 +1,6 @@
 <template>
-    <div class="w-full h-full flex flex-col gap-2" :class="themeStore.current.chatBg">
+    <div class="w-full h-full flex flex-col gap-2 bg-center bg-cover bg-no-repeat"
+        :class="authStore.usuario.bg_type === 'solid' ? themeStore.current.chatBg : ''" :style="fondoStyle">
         <!-- cabecera con fondo del "navBg", contrasta con el fondo del chat -->
         <div class="flex justify-between items-center p-3"
             :class="[themeStore.current.headerBg, themeStore.current.headerText]">
@@ -48,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Send, Info, Trash2, Smile } from '@lucide/vue'
 import { useSocket } from '../composables/useSocket'
 import { useAuthStore } from '../stores/authStore'
@@ -108,6 +109,22 @@ onUnmounted(() => {
     document.removeEventListener('click', handleClickFuera)
 })
 
+watch(() => props.sala.id, (nuevoId) => {
+    if (nuevoId) {
+        unirseSala(nuevoId)
+        cargarHistorial(nuevoId)
+    }
+}, { immediate: true })
+
+// calcula el estilo inline del fondo: solo se usa cuando hay imagen (preset o custom)
+const fondoStyle = computed(() => {
+    const { bg_type, bg_value } = authStore.usuario
+    if (bg_type === 'preset' || bg_type === 'custom') {
+        return { backgroundImage: `url(${bg_value})` }
+    }
+    return {} // "solid" -> sin imagen, usa la clase de color del tema
+})
+
 // carga el historial de la sala desde la BBDD (vía REST)
 async function cargarHistorial(roomId) {
     const res = await fetch(`${API_URL}/messages/room/${roomId}/${authStore.usuario.id}`)
@@ -120,12 +137,7 @@ async function eliminarChat() {
     await roomsStore.abandonarSala(props.sala.id)
 }
 
-watch(() => props.sala.id, (nuevoId) => {
-    if (nuevoId) {
-        unirseSala(nuevoId)
-        cargarHistorial(nuevoId)
-    }
-}, { immediate: true })
+
 
 escucharMensajes((msg) => {
     if (msg.room_id === props.sala.id) {

@@ -92,3 +92,15 @@ exports.search = async (req, res) => {
     res.status(500).json({ error: "Error al buscar usuarios" });
   }
 };
+
+// Actualiza el fondo de chat del usuario logueado
+exports.updateBackground = async (req, res) => {
+  try {
+    const { userId, bg_type, bg_value } = req.body;
+    await Users.updateBackground(userId, { bg_type, bg_value });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ evento: "error_actualizar_fondo", mensaje: err.message });
+    res.status(500).json({ error: "Error al actualizar el fondo" });
+  }
+};

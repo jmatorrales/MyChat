@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useRoomsStore } from "./roomsStore";
-import { API_URL } from '../config'
+import { API_URL } from "../config";
 
 export const useAuthStore = defineStore("auth", () => {
   //* Recuperamos el usuario guardado del localStorage al cargar la app si ya lo estaba previamente
@@ -50,6 +50,19 @@ export const useAuthStore = defineStore("auth", () => {
     return data.disponible;
   }
 
+  // Actualiza el fondo de chat del usuario logueado, tanto en backend como en el store local
+  async function updateBackground(bg_type, bg_value) {
+    await fetch(`${API_URL}/users/background`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: usuario.value.id, bg_type, bg_value }),
+    });
+    // reflejamos el cambio de inmediato en memoria, sin esperar a un refresco de página
+    usuario.value.bg_type = bg_type;
+    usuario.value.bg_value = bg_value;
+    localStorage.setItem("usuario", JSON.stringify(usuario.value));
+  }
+
   function logout() {
     usuario.value = null;
     localStorage.removeItem("usuario");
@@ -59,5 +72,5 @@ export const useAuthStore = defineStore("auth", () => {
     roomsStore.salaActiva = null;
   }
 
-  return { usuario, login, register, checkUsername, logout };
+  return { usuario, login, register, checkUsername, updateBackground, logout };
 });

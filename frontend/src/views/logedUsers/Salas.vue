@@ -9,8 +9,10 @@
         <!-- lista unificada de sugerencias: usuarios, salas, y "crear sala" -->
         <div v-if="sugerencias.length" class="mt-2 space-y-1">
           <div v-for="(item, i) in sugerencias" :key="item.type + item.id"
-            @mousedown.prevent="seleccionarSugerencia(item)" class="cursor-pointer p-2 rounded"
-            :class="i === indiceSeleccionado ? 'bg-blue-100' : 'hover:bg-gray-100'">
+            @mousedown.prevent="seleccionarSugerencia(item)" class="cursor-pointer p-2 rounded" :class="[
+              themeStore.current.sidebarText,
+              i === indiceSeleccionado ? 'bg-blue-100' : themeStore.current.sidebarHover
+            ]">
             <span v-if="item.type === 'user'">@{{ item.label }}</span>
             <span v-else-if="item.type === 'room'">#{{ item.label }}</span>
             <span v-else class="text-blue-600">+ Crear sala "{{ item.label }}"</span>
