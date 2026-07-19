@@ -1,6 +1,6 @@
 <template>
     <div :class="[themeStore.current.navBg, themeStore.current.navText]"
-        class="flex flex-row justify-between items-center p-5 gap-3">
+        class="flex flex-row justify-between items-center px-3 py-3 md:px-5 md:py-5 gap-3">
         <p class="text-xl font-semibold">MyChat</p>
         <div class="flex flex-row items-center gap-5">
             <Settings @click="uiStore.toggleSettings()" class="cursor-pointer" :size="iconSize" />

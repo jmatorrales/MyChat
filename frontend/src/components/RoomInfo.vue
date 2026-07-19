@@ -1,7 +1,7 @@
 <template>
     <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50" @click.self="$emit('close')">
         <!-- fondo y texto del panel según el tema activo (soporta modo oscuro) -->
-        <div class="rounded-lg w-[420px] max-h-[80vh] overflow-y-auto p-6 flex flex-col gap-4"
+        <div class="rounded-lg w-[90vw] max-w-[420px] max-h-[80vh] overflow-y-auto p-6 flex flex-col gap-4"
             :class="[themeStore.current.chatBg, themeStore.current.sidebarText]">
 
             <div class="flex justify-between items-center">

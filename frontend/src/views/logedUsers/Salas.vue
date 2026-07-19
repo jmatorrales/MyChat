@@ -1,12 +1,14 @@
 <template>
   <div class="flex h-full min-h-0">
-    <div :class="themeStore.current.sidebarBg" class="w-1/6 border-r flex flex-col">
+    <!-- Columna de lista: en móvil ocupa toda la pantalla y se OCULTA si hay sala activa;
+         en desktop (md:) siempre visible con ancho fijo -->
+    <div class="w-full md:w-1/6 border-r flex flex-col"
+      :class="[themeStore.current.sidebarBg, roomsStore.salaActiva ? 'hidden md:flex' : 'flex']">
       <!-- Buscador: @usuario o #sala. Flechas para moverte, Enter para confirmar -->
       <div class="p-3 border-b relative">
         <input v-model="busqueda" @input="buscar" @keydown="onKeydown" type="text" placeholder="Buscar @usuario o #sala"
           class="w-full border rounded-lg px-3 py-2" />
 
-        <!-- lista unificada de sugerencias: usuarios, salas, y "crear sala" -->
         <div v-if="sugerencias.length" class="mt-2 space-y-1">
           <div v-for="(item, i) in sugerencias" :key="item.type + item.id"
             @mousedown.prevent="seleccionarSugerencia(item)" class="cursor-pointer p-2 rounded" :class="[
@@ -21,30 +23,33 @@
       </div>
 
       <!-- Lista de salas/chats donde ya participa el usuario -->
-      <div v-for="sala in roomsStore.salas" :key="sala.id" @click="roomsStore.seleccionarSala(sala)"
-        class="p-3 cursor-pointer flex items-center gap-2" :class="[
-          themeStore.current.sidebarText,
-          roomsStore.salaActiva?.id === sala.id ? themeStore.current.sidebarActive : themeStore.current.sidebarHover
-        ]">
-        <!-- grupo -> icono genérico; individual -> avatar del otro usuario (o inicial si no tiene) -->
-        <Users v-if="sala.type === 'group' && !sala.roomAvatar"
-          class="w-8 h-8 rounded-full bg-gray-300 p-1.5 text-white shrink-0" />
-        <img v-else-if="sala.type === 'group' && sala.roomAvatar" :src="sala.roomAvatar"
-          class="w-8 h-8 rounded-full object-cover shrink-0" />
-        <img v-else-if="sala.otherAvatar" :src="sala.otherAvatar" class="w-8 h-8 rounded-full object-cover shrink-0" />
-        <div v-else
-          class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-xs text-white shrink-0">
-          {{ sala.displayName[0]?.toUpperCase() }}
+      <div class="flex-1 overflow-y-auto">
+        <div v-for="sala in roomsStore.salas" :key="sala.id" @click="roomsStore.seleccionarSala(sala)"
+          class="p-3 cursor-pointer flex items-center gap-2" :class="[
+            themeStore.current.sidebarText,
+            roomsStore.salaActiva?.id === sala.id ? themeStore.current.sidebarActive : themeStore.current.sidebarHover
+          ]">
+          <Users v-if="sala.type === 'group' && !sala.roomAvatar"
+            class="w-8 h-8 rounded-full bg-gray-300 p-1.5 text-white shrink-0" />
+          <img v-else-if="sala.type === 'group' && sala.roomAvatar" :src="sala.roomAvatar"
+            class="w-8 h-8 rounded-full object-cover shrink-0" />
+          <img v-else-if="sala.otherAvatar" :src="sala.otherAvatar"
+            class="w-8 h-8 rounded-full object-cover shrink-0" />
+          <div v-else
+            class="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-xs text-white shrink-0">
+            {{ sala.displayName[0]?.toUpperCase() }}
+          </div>
+          <span class="flex-1">{{ sala.displayName }}</span>
+          <Mail v-if="sala.hasUnread" class="text-orange-500 shrink-0" :size="16" />
         </div>
-
-        <span class="flex-1">{{ sala.displayName }}</span>
-        <Mail v-if="sala.hasUnread" class="text-orange-500 shrink-0" :size="16" />
       </div>
     </div>
 
-    <div class="flex-1 min-h-0">
-      <ChatWindow v-if="roomsStore.salaActiva" :sala="roomsStore.salaActiva" />
-      <div v-else class="h-full flex items-center justify-center text-gray-400">
+    <!-- Columna de chat: en móvil ocupa toda la pantalla y SOLO se ve si hay sala activa;
+         en desktop siempre visible (flex-1) -->
+    <div class="flex-1 min-h-0" :class="roomsStore.salaActiva ? 'flex' : 'hidden md:flex'">
+      <ChatWindow v-if="roomsStore.salaActiva" :sala="roomsStore.salaActiva" class="w-full" />
+      <div v-else class="h-full w-full items-center justify-center text-gray-400 hidden md:flex">
         Selecciona un chat para empezar
       </div>
     </div>

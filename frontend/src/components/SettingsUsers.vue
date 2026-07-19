@@ -1,25 +1,30 @@
 <template>
     <div v-if="uiStore.showSettings" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
         @click.self="uiStore.toggleSettings()">
-        <!-- contenedor principal del modal -->
-        <div class="rounded-lg w-3/4 h-3/4 flex overflow-hidden" :class="themeStore.current.chatBg">
+        <!-- contenedor principal del modal: ocupa toda la pantalla en móvil,
+             y se centra con tamaño fijo (w-3/4 h-3/4) desde md: en adelante.
+             flex-col en móvil (menú arriba, contenido abajo) / flex-row en desktop (menú al lado) -->
+        <div class="rounded-lg w-full h-full md:w-3/4 md:h-3/4 flex flex-col md:flex-row overflow-hidden"
+            :class="themeStore.current.chatBg">
 
-            <!-- Menú lateral -->
-            <div class="w-1/4 p-4 space-y-2" :class="[themeStore.current.sidebarBg, themeStore.current.sidebarText]">
-                <button @click="uiStore.toggleSettings()">
+            <!-- Menú lateral: fila horizontal en móvil (los 3 items uno al lado del otro),
+                 columna vertical en desktop -->
+            <div class="flex flex-row md:flex-col items-center md:items-stretch justify-between md:justify-start p-4 gap-2 md:space-y-2 md:gap-0"
+                :class="[themeStore.current.sidebarBg, themeStore.current.sidebarText]">
+                <button @click="uiStore.toggleSettings()" class="order-first md:order-none">
                     <X />
                 </button>
                 <p @click="section = 'appearance'" :class="section === 'appearance' ? 'font-semibold' : 'opacity-50'"
-                    class="cursor-pointer flex gap-2">
-                    <Palette /> Apariencia
+                    class="cursor-pointer flex gap-2 text-sm md:text-base">
+                    <Palette /> <span class="hidden sm:inline">Apariencia</span>
                 </p>
                 <p @click="section = 'user'" :class="section === 'user' ? 'font-semibold' : 'opacity-50'"
-                    class="cursor-pointer flex gap-2">
-                    <User /> Usuario
+                    class="cursor-pointer flex gap-2 text-sm md:text-base">
+                    <User /> <span class="hidden sm:inline">Usuario</span>
                 </p>
                 <p @click="section = 'info'" :class="section === 'info' ? 'font-semibold' : 'opacity-50'"
-                    class="cursor-pointer flex gap-2">
-                    <Info /> Info
+                    class="cursor-pointer flex gap-2 text-sm md:text-base">
+                    <Info /> <span class="hidden sm:inline">Info</span>
                 </p>
             </div>
 

@@ -2,17 +2,40 @@
     <div class="w-full h-full flex flex-col gap-2 min-h-0 bg-center bg-cover" :class="[
         authStore.usuario.bg_type === 'solid' ? themeStore.current.chatBg : 'bg-contain'
     ]" :style="fondoStyle">
-        <!-- cabecera con fondo del "headerBg", contrasta con el fondo del chat -->
-        <div class="flex justify-between items-center p-3"
+        
+        <!-- ============================================================
+             CABECERA MÓVIL (md:hidden → visible solo en pantallas < 768px)
+             Incluye flecha "Atrás" para volver a la lista de salas
+             ============================================================ -->
+        <div class="flex justify-between items-center p-3 md:hidden"
+            :class="[themeStore.current.headerBg, themeStore.current.headerText]">
+            <div class="flex items-center gap-2">
+                <ArrowLeft @click="roomsStore.salaActiva = null" class="cursor-pointer" :size="20" />
+                <p class="font-semibold">{{ sala.displayName }}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="cursor-pointer" :size="20" />
+                <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="cursor-pointer" :size="20" />
+            </div>
+        </div>
+
+        <!-- ============================================================
+             CABECERA DESKTOP (hidden md:flex → visible solo en pantallas ≥ 768px)
+             Misma info que la móvil pero sin flecha "Atrás"
+             ============================================================ -->
+        <div class="hidden md:flex justify-between items-center p-3"
             :class="[themeStore.current.headerBg, themeStore.current.headerText]">
             <p class="font-semibold">{{ sala.displayName }}</p>
-            <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="cursor-pointer" :size="20" />
-            <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="cursor-pointer" :size="20" />
+            <div class="flex items-center gap-3">
+                <Info v-if="sala.type === 'group'" @click="showRoomInfo = true" class="cursor-pointer" :size="20" />
+                <Trash2 v-if="sala.type === 'individual'" @click="eliminarChat" class="cursor-pointer" :size="20" />
+            </div>
         </div>
 
         <!-- overflow-x-hidden: si algo intenta desbordarse por ancho, se queda contenido aquí
              y no arrastra scroll horizontal a toda la app (lista de salas, cabecera, etc.) -->
-        <div ref="contenedorMensajes" class="w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-2">
+        <div ref="contenedorMensajes"
+            class="w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-2">
             <template v-for="msg in mensajes" :key="msg.id">
                 <!-- ============ BURBUJA DE GRUPO (con avatar) ============
                      max-w-[75%] + min-w-0 van en el contenedor flex EXTERIOR (fila avatar+burbuja):
@@ -88,7 +111,7 @@
 
 <script setup>
 import { ref, nextTick, watch, onMounted, onUnmounted, computed } from 'vue'
-import { Send, Info, Trash2, Smile } from '@lucide/vue'
+import { Send, Info, Trash2, Smile, ArrowLeft } from '@lucide/vue'
 import { useSocket } from '../composables/useSocket'
 import { useAuthStore } from '../stores/authStore'
 import { useRoomsStore } from '../stores/roomsStore'
