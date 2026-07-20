@@ -89,7 +89,7 @@ export const useRoomsStore = defineStore("rooms", () => {
 
   // trae la info de una sala (nombre, creador) + sus miembros
   async function fetchRoomInfo(roomId) {
-    const res = await apiFetch(` /rooms/${roomId}/info`);
+    const res = await apiFetch(`/rooms/${roomId}/info`);
     return await res.json();
   }
 
